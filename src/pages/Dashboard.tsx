@@ -1,58 +1,17 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { toast } from "sonner";
-import { Plus } from "lucide-react";
-import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
-import { AppointmentsList } from "@/components/appointments/AppointmentsList";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { startOfDay, endOfDay } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { AppointmentsList } from "@/components/appointments/AppointmentsList";
+import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
+import { Calendar } from "@/components/ui/calendar";
 
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-};
-
-const Dashboard = () => {
-  const navigate = useNavigate();
-  const [fullName, setFullName] = useState<string>("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkSessionAndProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/");
-        return;
-      }
-
-      // Fetch user's profile
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        toast.error("Error fetching profile");
-        return;
-      }
-
-      if (profile?.full_name) {
-        // Get first name by splitting at first space
-        const firstName = profile.full_name.split(' ')[0];
-        setFullName(firstName);
-      }
-    };
-
-    checkSessionAndProfile();
-  }, [navigate]);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -84,67 +43,31 @@ const Dashboard = () => {
     fetchAppointments();
   }, [selectedDate]);
 
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      navigate("/");
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Appointment
-            </Button>
-            <Button onClick={handleSignOut} variant="outline">
-              Sign Out
-            </Button>
-          </div>
-        </div>
-        
-        <p className="text-gray-600 mb-8">
-          {getGreeting()}{fullName ? `, ${fullName}` : ''}!
-        </p>
-
-        <div className="grid grid-cols-3 gap-8">
-          <div className="col-span-2 bg-white rounded-lg p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-[400px]">
-                Loading...
-              </div>
-            ) : (
-              <AppointmentsList 
-                appointments={appointments}
-                selectedDate={selectedDate}
-              />
-            )}
-          </div>
-          
-          <div className="bg-white rounded-lg p-6">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              className="w-full"
-            />
-          </div>
-        </div>
+    <div className="grid grid-cols-[300px,1fr] gap-8">
+      <div>
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date) => date && setSelectedDate(date)}
+          className="rounded-md border"
+        />
       </div>
 
-      <CreateAppointmentModal 
-        open={showCreateModal}
-        onOpenChange={setShowCreateModal}
+      <AppointmentsList
+        appointments={appointments}
+        selectedDate={selectedDate}
+      />
+
+      <CreateAppointmentModal
+        open={searchParams.get("modal") === "create"}
+        onOpenChange={(open) => {
+          if (!open) {
+            searchParams.delete("modal");
+            setSearchParams(searchParams);
+          }
+        }}
       />
     </div>
   );
-};
-
-export default Dashboard;
+}

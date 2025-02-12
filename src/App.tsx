@@ -1,34 +1,23 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import VideoSession from "./pages/VideoSession";
-
-const queryClient = new QueryClient();
-
-// Configure Supabase auth to persist session for 30 days
-supabase.auth.setSession({
-  access_token: "",
-  refresh_token: "",
-});
+import { Toaster } from "sonner";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { queryClient } from "@/lib/react-query";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import Dashboard from "@/pages/Dashboard";
+import Schedule from "@/pages/Schedule";
+import Clients from "@/pages/Clients";
+import Invoices from "@/pages/Invoices";
+import Index from "@/pages/Index";
+import Onboarding from "@/pages/Onboarding";
+import NotFound from "@/pages/NotFound";
+import VideoSession from "@/pages/VideoSession";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import AuthCard from "@/components/auth/AuthCard";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 
 const App = () => {
-  useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN") {
-        console.log("Signed in:", session?.user.email);
-      }
-    });
-  }, []);
-
   return (
     <>
       <Helmet>
@@ -37,16 +26,25 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Sonner />
-          <BrowserRouter>
+          <Router>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={<AuthLayout />} />
               <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="*" element={<NotFound />} />
               <Route path="/video/:appointmentId" element={<VideoSession />} />
+              
+              {/* Wrap all dashboard routes with ProtectedRoute */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<DashboardLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/schedule" element={<Schedule />} />
+                  <Route path="/clients" element={<Clients />} />
+                  <Route path="/invoices" element={<Invoices />} />
+                </Route>
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </Router>
         </TooltipProvider>
       </QueryClientProvider>
     </>

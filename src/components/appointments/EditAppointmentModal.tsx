@@ -19,6 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -29,6 +30,10 @@ const formSchema = z.object({
   session_time: z.string({
     required_error: "Please select a time",
   }),
+  session_length: z.enum(["30", "60", "90", "120"], {
+    required_error: "Please select session length",
+  }),
+  notes: z.string().optional(),
 });
 
 interface EditAppointmentModalProps {
@@ -37,6 +42,8 @@ interface EditAppointmentModalProps {
   appointment: {
     id: string;
     session_date: string;
+    session_length: number;
+    notes?: string;
   } | null;
   onSuccess?: () => void;
 }
@@ -54,6 +61,8 @@ export function EditAppointmentModal({
     defaultValues: {
       session_date: appointment ? new Date(appointment.session_date) : undefined,
       session_time: appointment ? format(new Date(appointment.session_date), "HH:mm") : "",
+      session_length: appointment ? appointment.session_length.toString() : "60",
+      notes: appointment?.notes || "",
     },
   });
 
@@ -68,7 +77,11 @@ export function EditAppointmentModal({
 
       const { error } = await supabase
         .from("appointments")
-        .update({ session_date })
+        .update({ 
+          session_date,
+          session_length: parseInt(values.session_length),
+          notes: values.notes,
+        })
         .eq("id", appointment.id);
 
       if (error) throw error;
@@ -147,6 +160,44 @@ export function EditAppointmentModal({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="session_length"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Session Length</FormLabel>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    {...field}
+                  >
+                    <option value="30">30 minutes</option>
+                    <option value="60">60 minutes</option>
+                    <option value="90">90 minutes</option>
+                    <option value="120">120 minutes</option>
+                  </select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add any additional notes..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end">
               <button

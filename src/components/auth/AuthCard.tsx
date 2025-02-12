@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { z } from "zod";
 
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -36,7 +37,7 @@ const AuthCard = () => {
 
         navigate(profile?.is_onboarding_complete ? "/dashboard" : "/onboarding");
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -47,32 +48,43 @@ const AuthCard = () => {
           },
         });
         
-        if (error) throw error;
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("No user data");
 
-        if (data.user) {
-          // Create initial profile record
+        // Try to get existing profile first
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', authData.user.id)
+          .single();
+
+        // Only create profile if it doesn't exist
+        if (!existingProfile) {
           const { error: profileError } = await supabase
             .from('profiles')
-            .insert([
-              {
-                id: data.user.id,
-                is_onboarding_complete: false,
-              }
-            ]);
+            .insert({
+              id: authData.user.id,
+              email,
+              is_onboarding_complete: false,
+            });
 
           if (profileError) throw profileError;
         }
 
-        toast.success(
-          "Success! Please check your email to confirm your account.",
-          { duration: 6000 }
-        );
+        toast({
+          title: "Success",
+          description: "Account created successfully",
+        });
         
-        // Don't navigate - wait for email confirmation
-        setIsLogin(true); // Switch to login view
+        navigate("/onboarding");
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Signup error:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

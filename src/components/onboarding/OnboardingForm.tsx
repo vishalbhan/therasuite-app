@@ -20,6 +20,8 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { WorkingHoursInput } from './WorkingHoursInput';
 import { PhotoUpload } from './PhotoUpload';
+import { Label } from '@/components/ui/label';
+import { format, parse } from 'date-fns';
 
 const formSchema = z.object({
   photo_url: z.string().optional(),
@@ -75,10 +77,36 @@ type FormValues = z.infer<typeof formSchema>;
 
 const steps = ['Basic Info', 'Schedule', 'Session Details', 'Payment'];
 
+interface WorkingHours {
+  start: string;
+  end: string;
+}
+
+interface DaySchedule {
+  enabled: boolean;
+  hours: WorkingHours;
+}
+
+type WeekSchedule = {
+  [key in DayOfWeek]: DaySchedule;
+};
+
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
 export const OnboardingForm = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [sameHoursEveryDay, setSameHoursEveryDay] = useState(false);
+  const [schedule, setSchedule] = useState<WeekSchedule>({
+    monday: { enabled: true, hours: { start: "09:00", end: "17:00" } },
+    tuesday: { enabled: true, hours: { start: "09:00", end: "17:00" } },
+    wednesday: { enabled: true, hours: { start: "09:00", end: "17:00" } },
+    thursday: { enabled: true, hours: { start: "09:00", end: "17:00" } },
+    friday: { enabled: true, hours: { start: "09:00", end: "17:00" } },
+    saturday: { enabled: false, hours: { start: "09:00", end: "17:00" } },
+    sunday: { enabled: false, hours: { start: "09:00", end: "17:00" } },
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -116,9 +144,22 @@ export const OnboardingForm = () => {
     }
     
     try {
+      // Transform schedule into working_hours format
+      const working_hours = Object.entries(schedule).reduce((acc, [day, { enabled, hours }]) => ({
+        ...acc,
+        [day.charAt(0).toUpperCase() + day.slice(1)]: [
+          {
+            start: hours.start,
+            end: hours.end,
+            enabled: enabled
+          }
+        ]
+      }), {});
+
       // Clean up the values before sending to Supabase
       const submitData = {
         ...values,
+        working_hours,
         price_per_session: values.collect_payments ? Number(values.price_per_session) : null,
         location: values.session_type === 'video' ? null : values.location,
         is_onboarding_complete: true,
@@ -154,6 +195,37 @@ export const OnboardingForm = () => {
 
   const showLocationFields = form.watch('session_type') !== 'video';
   const showPriceField = form.watch('collect_payments');
+
+  // Function to update all days with the same hours
+  const updateAllDays = (hours: WorkingHours) => {
+    const updatedSchedule = { ...schedule };
+    Object.keys(updatedSchedule).forEach((day) => {
+      if (updatedSchedule[day as DayOfWeek].enabled) {
+        updatedSchedule[day as DayOfWeek].hours = hours;
+      }
+    });
+    setSchedule(updatedSchedule);
+  };
+
+  // Function to update a single day's hours
+  const updateDayHours = (day: DayOfWeek, hours: WorkingHours) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], hours },
+    }));
+  };
+
+  // Function to toggle a day's enabled status
+  const toggleDay = (day: DayOfWeek) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        enabled: !prev[day].enabled,
+        hours: prev[day].hours,
+      },
+    }));
+  };
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -258,22 +330,114 @@ export const OnboardingForm = () => {
           )}
 
           {currentStep === 1 && (
-            <FormField
-              control={form.control}
-              name="working_hours"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Working Hours</FormLabel>
-                  <FormControl>
-                    <WorkingHoursInput
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">Working Hours</h2>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={sameHoursEveryDay}
+                  onCheckedChange={setSameHoursEveryDay}
+                  id="same-hours"
+                />
+                <Label htmlFor="same-hours">Same hours every day?</Label>
+              </div>
+
+              {sameHoursEveryDay ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <Label>Start Time</Label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={schedule.monday.hours.start}
+                        onChange={(e) => updateAllDays({ 
+                          start: e.target.value, 
+                          end: schedule.monday.hours.end 
+                        })}
+                      >
+                        {generateTimeOptions()}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <Label>End Time</Label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={schedule.monday.hours.end}
+                        onChange={(e) => updateAllDays({ 
+                          start: schedule.monday.hours.start, 
+                          end: e.target.value 
+                        })}
+                      >
+                        {generateTimeOptions()}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {Object.entries(schedule).map(([day, { enabled }]) => (
+                      <div key={day} className="flex items-center space-x-2">
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={() => toggleDay(day as DayOfWeek)}
+                          id={`day-${day}`}
+                        />
+                        <Label htmlFor={`day-${day}`} className="capitalize">
+                          {day}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(schedule).map(([day, { enabled, hours }]) => (
+                    <div key={day} className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={() => toggleDay(day as DayOfWeek)}
+                          id={`day-${day}`}
+                        />
+                        <Label htmlFor={`day-${day}`} className="capitalize">
+                          {day}
+                        </Label>
+                      </div>
+                      
+                      {enabled && (
+                        <div className="flex items-center gap-4 ml-8">
+                          <div className="flex-1">
+                            <Label>Start Time</Label>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              value={hours.start}
+                              onChange={(e) => updateDayHours(day as DayOfWeek, {
+                                start: e.target.value,
+                                end: hours.end,
+                              })}
+                            >
+                              {generateTimeOptions()}
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <Label>End Time</Label>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              value={hours.end}
+                              onChange={(e) => updateDayHours(day as DayOfWeek, {
+                                start: hours.start,
+                                end: e.target.value,
+                              })}
+                            >
+                              {generateTimeOptions()}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
-            />
+            </div>
           )}
 
           {currentStep === 2 && (
@@ -499,4 +663,20 @@ export const OnboardingForm = () => {
       </Form>
     </div>
   );
-}; 
+};
+
+// Helper function to generate time options (30-minute intervals)
+function generateTimeOptions() {
+  const options = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      options.push(
+        <option key={time} value={time}>
+          {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
+        </option>
+      );
+    }
+  }
+  return options;
+} 
