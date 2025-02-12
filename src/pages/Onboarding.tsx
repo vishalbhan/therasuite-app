@@ -1,8 +1,7 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { OnboardingForm } from "@/components/onboarding/OnboardingForm";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -12,23 +11,33 @@ const Onboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/");
+        return;
+      }
+
+      // Check if profile is already complete
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_onboarding_complete')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.is_onboarding_complete) {
+        navigate("/dashboard");
       }
     };
 
     checkSession();
   }, [navigate]);
 
-  const handleComplete = () => {
-    navigate("/dashboard");
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-4">Welcome to TheraSuite!</h1>
-        <p className="text-gray-600 mb-8">Let's get you started...</p>
-        <Button onClick={handleComplete}>Complete Onboarding</Button>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold">Complete Your Profile</h1>
+        <p className="text-gray-600 mt-2">
+          Let's set up your professional profile to get started
+        </p>
       </div>
+      <OnboardingForm />
     </div>
   );
 };

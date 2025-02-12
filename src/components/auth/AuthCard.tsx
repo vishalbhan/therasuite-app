@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,27 +20,56 @@ const AuthCard = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
         });
         
         if (error) throw error;
-        navigate("/dashboard");
+
+        // Check if profile is complete
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_onboarding_complete')
+          .eq('id', data.user.id)
+          .single();
+
+        navigate(profile?.is_onboarding_complete ? "/dashboard" : "/onboarding");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            data: {
+              full_name: '',
+              is_onboarding_complete: false,
+            },
           },
         });
         
         if (error) throw error;
-        navigate("/onboarding");
+
+        if (data.user) {
+          // Create initial profile record
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: data.user.id,
+                is_onboarding_complete: false,
+              }
+            ]);
+
+          if (profileError) throw profileError;
+        }
+
+        toast.success(
+          "Success! Please check your email to confirm your account.",
+          { duration: 6000 }
+        );
+        
+        // Don't navigate - wait for email confirmation
+        setIsLogin(true); // Switch to login view
       }
     } catch (error: any) {
       toast.error(error.message);
