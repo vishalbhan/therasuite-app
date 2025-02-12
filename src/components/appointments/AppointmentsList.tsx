@@ -1,6 +1,19 @@
-import { format, addMinutes } from "date-fns";
-import { Calendar as CalendarIcon, Clock, Video, MapPin } from "lucide-react";
+import { useState } from "react";
+import { format, addMinutes, isWithinInterval } from "date-fns";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { EditAppointmentModal } from "./EditAppointmentModal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface Appointment {
   id: string;
@@ -18,10 +31,67 @@ interface AppointmentsListProps {
 }
 
 export function AppointmentsList({ appointments, selectedDate }: AppointmentsListProps) {
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
   const formatTimeRange = (startTime: string, lengthInMinutes: number) => {
     const startDate = new Date(startTime);
     const endDate = addMinutes(startDate, lengthInMinutes);
     return `${format(startDate, "h:mm")} - ${format(endDate, "h:mm a")}`;
+  };
+
+  const handleEdit = (appointment: Appointment) => {
+    setEditingAppointment(appointment);
+    setShowEditModal(true);
+  };
+
+  const handleCancelClick = (appointment: Appointment) => {
+    setAppointmentToCancel(appointment);
+    setShowCancelModal(true);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!appointmentToCancel) return;
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'cancelled' })
+        .eq('id', appointmentToCancel.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Appointment cancelled successfully",
+      });
+
+      setShowCancelModal(false);
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isAppointmentActive = (appointment: Appointment) => {
+    const now = new Date();
+    const startTime = new Date(appointment.session_date);
+    const endTime = addMinutes(startTime, appointment.session_length);
+
+    return isWithinInterval(now, { start: startTime, end: endTime });
+  };
+
+  const handleStartVideoCall = (appointmentId: string) => {
+    navigate(`/video/${appointmentId}`);
   };
 
   return (
@@ -61,18 +131,73 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
                     {formatCurrency(appointment.price)}
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs capitalize
-                  ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
-                  ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
-                  ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
-                `}>
-                  {appointment.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded-full text-xs capitalize
+                    ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
+                    ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+                    ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
+                  `}>
+                    {appointment.status}
+                  </span>
+                  {appointment.status === 'scheduled' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleCancelClick(appointment)}
+                          className="text-red-600"
+                        >
+                          Cancel
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
+              {appointment.session_type === 'video' && 
+               appointment.status === 'scheduled' && 
+               isAppointmentActive(appointment) && (
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    onClick={() => handleStartVideoCall(appointment.id)}
+                    className="bg-violet-800 hover:bg-violet-900 text-white"
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Start Video Call
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+
+      <EditAppointmentModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        appointment={editingAppointment}
+        onSuccess={() => {
+          // Trigger a refresh of the appointments list
+          window.location.reload();
+        }}
+      />
+
+      <ConfirmModal
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        title="Cancel Appointment"
+        description={`Are you sure you want to cancel the appointment with ${appointmentToCancel?.client_name}? This action cannot be undone.`}
+        confirmText="Yes, cancel appointment"
+        cancelText="No, keep appointment"
+        onConfirm={handleCancelConfirm}
+      />
     </div>
   );
 } 

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import { Helmet } from "react-helmet";
+import VideoSession from "./pages/VideoSession";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/video/:appointmentId" element={<VideoSession />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
