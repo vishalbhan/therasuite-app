@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, getInitials, generateRandomColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,20 +56,22 @@ interface CreateAppointmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: string | null;
+  defaultClient?: { name: string; email: string } | null;
 }
 
 export function CreateAppointmentModal({
   open,
   onOpenChange,
-  defaultDate
+  defaultDate,
+  defaultClient
 }: CreateAppointmentModalProps) {
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      client_name: "",
-      client_email: "",
+      client_name: defaultClient?.name || "",
+      client_email: defaultClient?.email || "",
       session_date: defaultDate ? new Date(defaultDate) : undefined,
       session_time: defaultDate ? format(new Date(defaultDate), "HH:mm") : "",
       session_length: "60",
@@ -78,6 +80,13 @@ export function CreateAppointmentModal({
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (defaultClient) {
+      form.setValue('client_name', defaultClient.name);
+      form.setValue('client_email', defaultClient.email);
+    }
+  }, [defaultClient, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -89,18 +98,42 @@ export function CreateAppointmentModal({
       const session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
 
-      const { error } = await supabase.from("appointments").insert({
+      // Create or update client
+      const clientData = {
+        name: values.client_name,
+        email: values.client_email,
+        avatar_color: generateRandomColor(),
+        initials: getInitials(values.client_name),
         therapist_id: user.id,
-        client_name: values.client_name,
-        client_email: values.client_email,
-        session_date,
-        session_length: parseInt(values.session_length),
-        session_type: values.session_type,
-        price: values.price,
-        notes: values.notes,
-      });
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      // Insert into clients table
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .upsert(clientData, {
+          onConflict: 'therapist_id,email',
+          ignoreDuplicates: false,
+          returning: true
+        });
+
+      if (clientError) throw clientError;
+
+      // Create appointment
+      const { error: appointmentError } = await supabase
+        .from("appointments")
+        .insert({
+          therapist_id: user.id,
+          client_name: values.client_name,
+          client_email: values.client_email,
+          session_date,
+          session_length: parseInt(values.session_length),
+          session_type: values.session_type,
+          price: values.price,
+          notes: values.notes,
+        });
+
+      if (appointmentError) throw appointmentError;
 
       toast({
         title: "Success",

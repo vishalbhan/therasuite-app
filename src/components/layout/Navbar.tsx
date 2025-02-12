@@ -36,9 +36,9 @@ const navItems = [
     href: "/clients",
   },
   {
-    label: "Invoices",
+    label: "Earnings",
     icon: Receipt,
-    href: "/invoices",
+    href: "/earnings",
   },
 ];
 

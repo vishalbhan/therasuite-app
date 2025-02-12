@@ -8,7 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import Schedule from "@/pages/Schedule";
 import Clients from "@/pages/Clients";
-import Invoices from "@/pages/Invoices";
+import Earnings from "@/pages/Earnings";
 import Index from "@/pages/Index";
 import Onboarding from "@/pages/Onboarding";
 import NotFound from "@/pages/NotFound";
@@ -38,7 +38,7 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/clients" element={<Clients />} />
-                  <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/earnings" element={<Earnings />} />
                 </Route>
               </Route>
 
