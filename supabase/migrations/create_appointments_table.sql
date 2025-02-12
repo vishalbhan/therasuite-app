@@ -9,7 +9,7 @@ create table appointments (
   session_date timestamp with time zone not null,
   session_length integer not null, -- in minutes
   session_type appointment_type not null,
-  price decimal(10,2) not null,
+  price decimal(12,0) not null,
   notes text,
   status appointment_status default 'scheduled',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,

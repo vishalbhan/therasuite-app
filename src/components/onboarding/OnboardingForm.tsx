@@ -462,14 +462,14 @@ export const OnboardingForm = () => {
                       <FormLabel>Price per Session</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <span className="absolute left-3 top-2">$</span>
+                          <span className="absolute left-3 top-2">₹</span>
                           <Input
-                            {...field}
                             type="number"
+                            step="1"
+                            min="0"
                             className="pl-7"
-                            placeholder="0.00"
-                            value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value)}
+                            placeholder="0"
+                            {...field}
                           />
                         </div>
                       </FormControl>

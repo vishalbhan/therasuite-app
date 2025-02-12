@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
+import { AppointmentsList } from "@/components/appointments/AppointmentsList";
+import { startOfDay, endOfDay } from "date-fns";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -17,6 +20,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState<string>("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkSessionAndProfile = async () => {
@@ -48,6 +54,36 @@ const Dashboard = () => {
     checkSessionAndProfile();
   }, [navigate]);
 
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const start = startOfDay(selectedDate);
+        const end = endOfDay(selectedDate);
+
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('therapist_id', user.id)
+          .gte('session_date', start.toISOString())
+          .lte('session_date', end.toISOString())
+          .order('session_date', { ascending: true });
+
+        if (error) throw error;
+        setAppointments(data);
+      } catch (error: any) {
+        toast.error("Error fetching appointments");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, [selectedDate]);
+
   const handleSignOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -60,7 +96,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <div className="flex gap-2">
@@ -73,9 +109,34 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
-        <p className="text-gray-600">
+        
+        <p className="text-gray-600 mb-8">
           {getGreeting()}{fullName ? `, ${fullName}` : ''}!
         </p>
+
+        <div className="grid grid-cols-3 gap-8">
+          <div className="col-span-2 bg-white rounded-lg p-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-[400px]">
+                Loading...
+              </div>
+            ) : (
+              <AppointmentsList 
+                appointments={appointments}
+                selectedDate={selectedDate}
+              />
+            )}
+          </div>
+          
+          <div className="bg-white rounded-lg p-6">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              className="w-full"
+            />
+          </div>
+        </div>
       </div>
 
       <CreateAppointmentModal 

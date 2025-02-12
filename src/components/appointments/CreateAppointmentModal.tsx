@@ -269,13 +269,13 @@ export function CreateAppointmentModal({
                   <FormLabel>Price</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <span className="absolute left-3 top-2">$</span>
+                      <span className="absolute left-3 top-2">₹</span>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
                         className="pl-7"
-                        placeholder="0.00"
+                        placeholder="0"
                         {...field}
                       />
                     </div>
