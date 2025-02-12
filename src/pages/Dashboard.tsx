@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
+import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -14,6 +16,7 @@ const getGreeting = () => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState<string>("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     const checkSessionAndProfile = async () => {
@@ -60,14 +63,25 @@ const Dashboard = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Button onClick={handleSignOut} variant="outline">
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Appointment
+            </Button>
+            <Button onClick={handleSignOut} variant="outline">
+              Sign Out
+            </Button>
+          </div>
         </div>
         <p className="text-gray-600">
           {getGreeting()}{fullName ? `, ${fullName}` : ''}!
         </p>
       </div>
+
+      <CreateAppointmentModal 
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+      />
     </div>
   );
 };
