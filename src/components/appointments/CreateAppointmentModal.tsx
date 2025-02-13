@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/popover";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { emailService } from '@/lib/email';
 
 const formSchema = z.object({
   client_name: z.string().min(2, "Name must be at least 2 characters"),
@@ -66,6 +67,7 @@ export function CreateAppointmentModal({
   defaultClient
 }: CreateAppointmentModalProps) {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -89,6 +91,7 @@ export function CreateAppointmentModal({
   }, [defaultClient, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
@@ -108,6 +111,8 @@ export function CreateAppointmentModal({
         updated_at: new Date().toISOString()
       };
 
+      console.log('Client Data:', clientData); // Debug log
+
       // Insert into clients table
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -119,35 +124,55 @@ export function CreateAppointmentModal({
 
       if (clientError) throw clientError;
 
+      const appointmentData = {
+        therapist_id: user.id,
+        client_name: values.client_name,
+        client_email: values.client_email,
+        session_date: session_date.toISOString(), // Make sure we're sending ISO string
+        session_length: parseInt(values.session_length),
+        session_type: values.session_type,
+        price: values.price,
+        notes: values.notes,
+        status: 'scheduled' // Add default status if not already included
+      };
+
+      console.log('Appointment Data:', appointmentData); // Debug log
+
       // Create appointment
       const { error: appointmentError } = await supabase
         .from("appointments")
-        .insert({
-          therapist_id: user.id,
-          client_name: values.client_name,
-          client_email: values.client_email,
-          session_date,
-          session_length: parseInt(values.session_length),
-          session_type: values.session_type,
-          price: values.price,
-          notes: values.notes,
-        });
+        .insert(appointmentData);
 
-      if (appointmentError) throw appointmentError;
+      if (appointmentError) {
+        console.error('Appointment Error:', appointmentError); // Detailed error log
+        throw appointmentError;
+      }
+
+      // Send confirmation email
+      await emailService.sendAppointmentConfirmation({
+        client_name: values.client_name,
+        client_email: values.client_email,
+        session_date: session_date.toISOString(),
+        session_type: values.session_type,
+        session_length: parseInt(values.session_length)
+      });
 
       toast({
         title: "Success",
-        description: "Appointment created successfully",
+        description: "Appointment created and confirmation email sent",
       });
 
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
+      console.error('Full error:', error); // Detailed error log
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -322,10 +347,13 @@ export function CreateAppointmentModal({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit">Create Appointment</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Appointment"}
+              </Button>
             </div>
           </form>
         </Form>

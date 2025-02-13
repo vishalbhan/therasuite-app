@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { emailService } from '@/lib/email';
 
 interface Appointment {
   id: string;
@@ -23,6 +24,7 @@ interface Appointment {
   session_type: 'video' | 'in_person';
   status: 'scheduled' | 'completed' | 'cancelled';
   price: number;
+  client_email: string;
 }
 
 interface AppointmentsListProps {
@@ -65,9 +67,16 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
 
       if (error) throw error;
 
+      // Send cancellation email
+      await emailService.sendAppointmentCancellation({
+        client_name: appointmentToCancel.client_name,
+        client_email: appointmentToCancel.client_email,
+        session_date: appointmentToCancel.session_date
+      });
+
       toast({
         title: "Success",
-        description: "Appointment cancelled successfully",
+        description: "Appointment cancelled and notification email sent",
       });
 
       setShowCancelModal(false);
