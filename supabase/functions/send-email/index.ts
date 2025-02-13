@@ -16,7 +16,7 @@ serve(async (req) => {
     switch (type) {
       case 'appointment_confirmation':
         await resend.emails.send({
-          from: 'appointments@yourdomain.com',
+          from: 'appointments@therasuite.app',
           to: data.client_email,
           subject: 'Appointment Confirmation',
           html: `
@@ -37,7 +37,7 @@ serve(async (req) => {
 
       case 'appointment_cancellation':
         await resend.emails.send({
-          from: 'appointments@yourdomain.com',
+          from: 'appointments@therasuite.app',
           to: data.client_email,
           subject: 'Appointment Cancellation',
           html: `
@@ -52,7 +52,7 @@ serve(async (req) => {
 
       case 'appointment_reminder':
         await resend.emails.send({
-          from: 'appointments@yourdomain.com',
+          from: 'appointments@therasuite.app',
           to: data.client_email,
           subject: 'Appointment Reminder',
           html: `
