@@ -167,7 +167,7 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
                 <div className="flex justify-end mt-4">
                   <Button 
                     onClick={() => handleStartVideoCall(appointment.id)}
-                    className="bg-violet-800 hover:bg-violet-900 text-white"
+                    className="bg-green-600 hover:bg-green-700"
                   >
                     <Video className="h-4 w-4 mr-2" />
                     Start Video Call
