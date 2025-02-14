@@ -178,7 +178,7 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
                     onClick={() => handleStartVideoCall(appointment.id)}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    <Video className="h-4 w-4 mr-2" />
+                    <Video className="h-4 w-4 mr-1" />
                     Start Video Call
                   </Button>
                 </div>

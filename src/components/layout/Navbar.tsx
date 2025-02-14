@@ -99,7 +99,7 @@ export function Navbar() {
                 onClick={() => navigate("/dashboard?modal=create")}
                 className="bg-violet-800 hover:bg-violet-900"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1" />
                 Create Appointment
               </Button>
               <Tooltip>
