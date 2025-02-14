@@ -9,6 +9,7 @@
   line-height: 1.25rem !important;
   height: 2.5rem !important;
   border-radius: 0.375rem !important;
+  @apply flex items-center justify-center;
 }
 
 /* Active/Selected state */
@@ -47,4 +48,27 @@
 .fc .fc-toolbar-title {
   font-size: 1.125rem !important;
   font-weight: 600 !important;
+}
+
+/* Add these new styles */
+.fc-timegrid-slot {
+  transition: background-color 0.2s ease;
+}
+
+.fc-timegrid-slot:hover {
+  background-color: rgb(245 243 255) !important; /* violet-50 */
+}
+
+/* If you don't already have these styles, add them too */
+.fc .fc-button-primary {
+  @apply bg-violet-600 border-violet-600 hover:bg-violet-700 hover:border-violet-700;
+}
+
+.fc .fc-button-primary:disabled {
+  @apply bg-violet-300 border-violet-300;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  @apply bg-violet-800 border-violet-800;
 } 

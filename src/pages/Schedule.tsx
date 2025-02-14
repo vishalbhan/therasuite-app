@@ -83,6 +83,7 @@ export default function Schedule() {
         nowIndicator={true}
         selectable={true}
         selectMirror={true}
+        slotLaneClassNames="hover:bg-violet-50 transition-colors"
         select={(info) => {
           // Open create modal with pre-filled date/time
           const params = new URLSearchParams(searchParams);

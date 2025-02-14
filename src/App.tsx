@@ -17,6 +17,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import AuthCard from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import ClientVideoSession from "@/pages/ClientVideoSession";
+import Settings from "@/pages/Settings";
 
 const App = () => {
   return (
@@ -41,6 +42,7 @@ const App = () => {
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/earnings" element={<Earnings />} />
+                  <Route path="/settings" element={<Settings />} />
                 </Route>
               </Route>
 

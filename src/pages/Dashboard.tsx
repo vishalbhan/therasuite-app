@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfDay, endOfDay, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AppointmentsList } from "@/components/appointments/AppointmentsList";
@@ -51,6 +51,14 @@ export default function Dashboard() {
           selected={selectedDate}
           onSelect={(date) => date && setSelectedDate(date)}
           className="rounded-md border"
+          modifiers={{ today: (date) => isToday(date) }}
+          modifiersStyles={{
+            today: {
+              fontWeight: 'bold',
+              border: '2px solid #7c3aed',
+              borderRadius: '0.5rem'
+            }
+          }}
         />
       </div>
 
