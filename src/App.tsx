@@ -16,6 +16,7 @@ import VideoSession from "@/pages/VideoSession";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import AuthCard from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import ClientVideoSession from "@/pages/ClientVideoSession";
 
 const App = () => {
   return (
@@ -31,6 +32,7 @@ const App = () => {
               <Route path="/" element={<AuthLayout />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/video/:appointmentId" element={<VideoSession />} />
+              <Route path="/client-video/:appointmentId" element={<ClientVideoSession />} />
               
               {/* Wrap all dashboard routes with ProtectedRoute */}
               <Route element={<ProtectedRoute />}>

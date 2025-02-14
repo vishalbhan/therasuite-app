@@ -37,7 +37,7 @@ serve(async (req) => {
     const response = await fetch('https://api.dyte.io/v2/meetings', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${btoa(Deno.env.get('DYTE_ORG_ID') + ':' + Deno.env.get('DYTE_API_KEY'))}`,
+        'Authorization': `Basic ${DYTE_BASE64_AUTH}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -65,27 +65,25 @@ serve(async (req) => {
       createParticipantToken(meeting.id, 'participant', clientEmail),
     ])
 
-    // Store meeting details in the database
-    const { error } = await supabaseClient
-      .from('video_meetings')
-      .insert({
-        appointment_id: appointmentId,
-        meeting_id: meeting.id,
-        therapist_token: therapistToken,
-        client_token: clientToken,
-        therapist_id: therapistId,
-        client_email: clientEmail,
+    // Update the appointment with the meeting details
+    const { error: updateError } = await supabaseClient
+      .from('appointments')
+      .update({
+        video_meeting_id: meeting.id,
+        video_therapist_token: therapistToken,
+        video_client_token: clientToken,
       })
+      .eq('id', appointmentId)
 
-    if (error) throw error
+    if (updateError) throw updateError
 
     return new Response(
       JSON.stringify({
-        authToken: therapistToken,
-        roomName: meeting.id,
+        success: true,
+        meeting_id: meeting.id,
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },  // Include CORS headers in response
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
   } catch (error) {
@@ -97,7 +95,7 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },  // Include CORS headers in error response
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
   }
@@ -107,7 +105,7 @@ async function createParticipantToken(meetingId: string, role: 'host' | 'partici
   const response = await fetch(`https://api.dyte.io/v2/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${btoa(Deno.env.get('DYTE_ORG_ID') + ':' + Deno.env.get('DYTE_API_KEY'))}`,
+      'Authorization': `Basic ${DYTE_BASE64_AUTH}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

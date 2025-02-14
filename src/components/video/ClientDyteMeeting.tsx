@@ -2,22 +2,12 @@ import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import DyteClient from '@dytesdk/web-core';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { VideoMeeting } from '@/types/dyte';
 
 interface DyteMeetingProps {
   appointmentId: string;
 }
 
-interface Appointment {
-  id: string;
-  client_email: string;
-  therapist_id: string;
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-  start_time: string;
-  end_time: string;
-}
-
-export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
+export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [meeting, setMeeting] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,24 +18,21 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         setLoading(true);
         setError(null);
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user found');
-
         // Get the meeting details from the appointments table
         const { data: appointment, error: appointmentError } = await supabase
           .from('appointments')
-          .select('video_meeting_id, video_therapist_token')
+          .select('video_meeting_id, video_client_token')
           .eq('id', appointmentId)
           .single();
 
         if (appointmentError) throw appointmentError;
-        if (!appointment.video_meeting_id || !appointment.video_therapist_token) {
+        if (!appointment.video_meeting_id || !appointment.video_client_token) {
           throw new Error('Video meeting not found');
         }
 
-        // Initialize Dyte client with the stored therapist token
+        // Initialize Dyte client with the stored client token
         const dyteClient = await DyteClient.init({
-          authToken: appointment.video_therapist_token,
+          authToken: appointment.video_client_token,
           defaults: {
             audio: true,
             video: true,
@@ -101,4 +88,4 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
       }}
     />
   );
-} 
+}

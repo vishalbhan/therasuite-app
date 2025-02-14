@@ -101,61 +101,92 @@ export function CreateAppointmentModal({
       const session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
 
-      // Create or update client
-      const clientData = {
-        name: values.client_name,
-        email: values.client_email,
-        avatar_color: generateRandomColor(),
-        initials: getInitials(values.client_name),
-        therapist_id: user.id,
-        updated_at: new Date().toISOString()
-      };
-
-      console.log('Client Data:', clientData); // Debug log
-
-      // Insert into clients table
-      const { data: client, error: clientError } = await supabase
-        .from('clients')
-        .upsert(clientData, {
-          onConflict: 'therapist_id,email',
-          ignoreDuplicates: false,
-          returning: true
-        });
-
-      if (clientError) throw clientError;
-
       const appointmentData = {
         therapist_id: user.id,
         client_name: values.client_name,
         client_email: values.client_email,
-        session_date: session_date.toISOString(), // Make sure we're sending ISO string
+        session_date: session_date.toISOString(),
         session_length: parseInt(values.session_length),
         session_type: values.session_type,
-        price: values.price,
+        price: parseFloat(values.price), // Ensure price is a number
         notes: values.notes,
-        status: 'scheduled' // Add default status if not already included
+        status: 'scheduled'
       };
 
-      console.log('Appointment Data:', appointmentData); // Debug log
-
-      // Create appointment
-      const { error: appointmentError } = await supabase
+      // Create appointment first
+      const { data: appointment, error: appointmentError } = await supabase
         .from("appointments")
-        .insert(appointmentData);
+        .insert(appointmentData)
+        .select()
+        .single();
 
-      if (appointmentError) {
-        console.error('Appointment Error:', appointmentError); // Detailed error log
-        throw appointmentError;
+      if (appointmentError) throw appointmentError;
+
+      // If this is a video appointment, create the Dyte meeting
+      if (values.session_type === 'video') {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/create-dyte-meeting`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              appointmentId: appointment.id,
+              therapistId: user.id,
+              clientEmail: values.client_email,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || 'Failed to create meeting');
+        }
       }
 
-      // Send confirmation email
-      await emailService.sendAppointmentConfirmation({
-        client_name: values.client_name,
-        client_email: values.client_email,
-        session_date: session_date.toISOString(),
-        session_type: values.session_type,
-        session_length: parseInt(values.session_length)
-      });
+      // Send confirmation email last
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
+
+        const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            type: 'appointment_confirmation',
+            data: {
+              client_name: values.client_name,
+              client_email: values.client_email,
+              session_date: session_date.toISOString(),
+              session_type: values.session_type,
+              session_length: parseInt(values.session_length)
+            }
+          })
+        });
+
+        if (!emailResponse.ok) {
+          const error = await emailResponse.json();
+          console.error('Email error:', error);
+          throw new Error('Failed to send confirmation email');
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Don't throw here, just show a warning toast
+        toast({
+          title: "Warning",
+          description: "Appointment created but confirmation email could not be sent",
+          variant: "warning",
+        });
+        // Return early to avoid showing success message
+        onOpenChange(false);
+        form.reset();
+        return;
+      }
 
       toast({
         title: "Success",
@@ -165,7 +196,7 @@ export function CreateAppointmentModal({
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
-      console.error('Full error:', error); // Detailed error log
+      console.error('Full error:', error);
       toast({
         title: "Error",
         description: error.message,

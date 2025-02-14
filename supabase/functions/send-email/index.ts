@@ -68,6 +68,22 @@ serve(async (req) => {
         });
         break;
 
+      case 'video_call_link':
+        await resend.emails.send({
+          from: 'appointments@therasuite.app',
+          to: data.client_email,
+          subject: 'Your Video Session is Starting',
+          html: `
+            <h1>Your Video Session is Starting</h1>
+            <p>Dear ${data.client_name},</p>
+            <p>Your therapist has started the video session. Please click the link below to join:</p>
+            <p><a href="${data.video_link}">${data.video_link}</a></p>
+            <p>If you have any issues joining, please contact your therapist.</p>
+            <p>Best regards,<br/>TheraSuite Team</p>
+          `
+        });
+        break;
+
       default:
         throw new Error('Invalid email type');
     }

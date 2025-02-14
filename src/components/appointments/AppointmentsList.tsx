@@ -99,8 +99,66 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
     return isWithinInterval(now, { start: startTime, end: endTime });
   };
 
-  const handleStartVideoCall = (appointmentId: string) => {
-    navigate(`/video/${appointmentId}`);
+  const handleStartVideoCall = async (appointmentId: string) => {
+    try {
+      // Get the appointment details including the client info and video tokens
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('id', appointmentId)
+        .single();
+
+      if (appointmentError) throw appointmentError;
+
+      // Generate the client's video call link
+      const clientVideoLink = `${window.location.origin}/client-video/${appointmentId}`;
+
+      // Send email to client with the video link
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+
+      const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          type: 'video_call_link',
+          data: {
+            client_name: appointment.client_name,
+            client_email: appointment.client_email,
+            session_date: appointment.session_date,
+            video_link: clientVideoLink
+          }
+        })
+      });
+
+      if (!emailResponse.ok) {
+        const error = await emailResponse.json();
+        console.error('Email error:', error);
+        toast({
+          title: "Warning",
+          description: "Started video call but failed to send link to client",
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Video call link sent to client",
+        });
+      }
+
+      // Navigate to the therapist's video call page
+      navigate(`/video/${appointmentId}`);
+    } catch (error: any) {
+      console.error('Error starting video call:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
