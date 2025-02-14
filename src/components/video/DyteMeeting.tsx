@@ -7,6 +7,13 @@ interface DyteMeetingProps {
   appointmentId: string;
 }
 
+interface Appointment {
+  id: string;
+  client_email: string;
+  therapist_id: string;
+  // ... add other fields as needed
+}
+
 export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [meeting, setMeeting] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +32,8 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           .single();
 
         if (error) throw error;
+        
+        const typedAppointment = appointment as Appointment;
 
         // Call the Edge Function instead of the API route
         const response = await fetch(
@@ -37,8 +46,8 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
             },
             body: JSON.stringify({
               appointmentId,
-              therapistId: user.id,
-              clientEmail: appointment.client_email,
+              therapistId: typedAppointment.therapist_id,
+              clientEmail: typedAppointment.client_email,
             }),
           }
         );
@@ -48,11 +57,10 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           throw new Error(data.error);
         }
 
-        const { authToken, roomName } = data;
+        const { authToken } = data;
 
         const dyteClient = await DyteClient.init({
           authToken,
-          roomName,
           defaults: {
             audio: true,
             video: true,

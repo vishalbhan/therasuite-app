@@ -2,26 +2,42 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ENVIRONMENT') === 'production' 
+    ? 'https://www.therasuite.app' 
+    : 'http://localhost:8080',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 // Base64 encode the API key
 const DYTE_BASE64_AUTH = btoa(`${Deno.env.get('DYTE_ORG_ID')}:${Deno.env.get('DYTE_API_KEY')}`);
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
     const { appointmentId, therapistId, clientEmail } = await req.json()
 
     // Create a meeting using Dyte's API
     const response = await fetch('https://api.dyte.io/v2/meetings', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${DYTE_BASE64_AUTH}`,
+        'Authorization': `Basic ${btoa(Deno.env.get('DYTE_ORG_ID') + ':' + Deno.env.get('DYTE_API_KEY'))}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -32,32 +48,33 @@ serve(async (req) => {
     })
 
     const meetingResponse = await response.json()
-    if (!meetingResponse.success) {
-      throw new Error(`Failed to create meeting: ${meetingResponse.message}`)
+    console.log('Dyte API Response:', meetingResponse)
+
+    if (!response.ok || !meetingResponse.success) {
+      throw new Error(`Dyte API error: ${JSON.stringify(meetingResponse)}`)
     }
 
     const meeting = meetingResponse.data
+    if (!meeting || !meeting.id) {
+      throw new Error(`Invalid meeting data: ${JSON.stringify(meetingResponse)}`)
+    }
 
-    // Create participant tokens with the same auth
+    // Create participant tokens for both therapist and client
     const [therapistToken, clientToken] = await Promise.all([
-      createParticipantToken(meeting.id, 'host', therapistId, DYTE_BASE64_AUTH),
-      createParticipantToken(meeting.id, 'participant', clientEmail, DYTE_BASE64_AUTH),
+      createParticipantToken(meeting.id, 'host', therapistId),
+      createParticipantToken(meeting.id, 'participant', clientEmail),
     ])
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Store meeting details
-    const { error } = await supabase
+    // Store meeting details in the database
+    const { error } = await supabaseClient
       .from('video_meetings')
       .insert({
         appointment_id: appointmentId,
         meeting_id: meeting.id,
         therapist_token: therapistToken,
         client_token: clientToken,
+        therapist_id: therapistId,
+        client_email: clientEmail,
       })
 
     if (error) throw error
@@ -68,31 +85,29 @@ serve(async (req) => {
         roomName: meeting.id,
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },  // Include CORS headers in response
+      }
     )
   } catch (error) {
-    console.error('Dyte API Error:', error)
+    console.error('Error creating meeting:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ 
+        error: 'Failed to create meeting',
+        details: error.message 
+      }),
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },  // Include CORS headers in error response
+      }
     )
   }
 })
 
-async function createParticipantToken(
-  meetingId: string, 
-  role: 'host' | 'participant', 
-  clientId: string,
-  auth: string
-) {
+async function createParticipantToken(meetingId: string, role: 'host' | 'participant', clientId: string) {
   const response = await fetch(`https://api.dyte.io/v2/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${auth}`,
+      'Authorization': `Basic ${btoa(Deno.env.get('DYTE_ORG_ID') + ':' + Deno.env.get('DYTE_API_KEY'))}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -103,8 +118,14 @@ async function createParticipantToken(
   })
 
   const participantResponse = await response.json()
-  if (!participantResponse.success) {
-    throw new Error(`Failed to create participant token: ${participantResponse.message}`)
+  console.log('Dyte Participant API Response:', participantResponse)
+
+  if (!response.ok || !participantResponse.success) {
+    throw new Error(`Failed to create participant token: ${JSON.stringify(participantResponse)}`)
+  }
+
+  if (!participantResponse.data || !participantResponse.data.token) {
+    throw new Error(`Invalid participant data: ${JSON.stringify(participantResponse)}`)
   }
 
   return participantResponse.data.token
