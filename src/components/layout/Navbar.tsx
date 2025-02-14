@@ -66,32 +66,34 @@ export function Navbar() {
       <nav className="border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex-shrink-0">
-              <Link to="/dashboard" className="text-xl font-bold text-violet-800">
-                TheraSuite
-              </Link>
-            </div>
+            <div className="flex items-center space-x-8">
+              <div className="flex-shrink-0">
+                <Link to="/dashboard" className="text-xl font-bold text-violet-800">
+                  TheraSuite
+                </Link>
+              </div>
 
-            <div className="flex-1 flex justify-center space-x-4">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                      ${isActive 
-                        ? 'bg-violet-100 text-violet-900' 
-                        : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
-                      }`}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {item.label}
-                  </Link>
-                );
-              })}
+              <div className="flex space-x-4">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  const Icon = item.icon;
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                        ${isActive 
+                          ? 'bg-violet-100 text-violet-900' 
+                          : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
+                        }`}
+                    >
+                      <Icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center space-x-4">
