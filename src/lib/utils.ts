@@ -25,21 +25,17 @@ export function getInitials(name: string): string {
 }
 
 export function generateRandomColor(): string {
-  // Array of pleasant, muted colors
   const colors = [
-    '#FDA4AF', // rose-300
-    '#FCA5A5', // red-300
-    '#FDBA74', // orange-300
-    '#FCD34D', // amber-300
-    '#BEF264', // lime-300
-    '#86EFAC', // green-300
-    '#5EEAD4', // teal-300
-    '#67E8F9', // cyan-300
-    '#7DD3FC', // sky-300
-    '#93C5FD', // blue-300
-    '#C4B5FD', // violet-300
-    '#F0ABFC', // fuchsia-300
+    "#FF5733", // Red-Orange
+    "#33FF57", // Green
+    "#3357FF", // Blue
+    "#FF33F5", // Pink
+    "#33FFF5", // Cyan
+    "#F5FF33", // Yellow
+    "#FF3333", // Red
+    "#33FF33", // Lime
+    "#3333FF", // Deep Blue
+    "#FF33B5", // Rose
   ];
-  
   return colors[Math.floor(Math.random() * colors.length)];
 }

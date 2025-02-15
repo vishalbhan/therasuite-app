@@ -101,19 +101,37 @@ export function CreateAppointmentModal({
       const session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
 
+      // First, create or update the client
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .upsert({
+          therapist_id: user.id,
+          name: values.client_name,
+          email: values.client_email,
+          avatar_color: generateRandomColor(),
+          initials: getInitials(values.client_name),
+        }, {
+          onConflict: 'therapist_id,email'
+        })
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+
       const appointmentData = {
         therapist_id: user.id,
+        client_id: client.id,
         client_name: values.client_name,
         client_email: values.client_email,
         session_date: session_date.toISOString(),
         session_length: parseInt(values.session_length),
         session_type: values.session_type,
-        price: parseFloat(values.price), // Ensure price is a number
+        price: parseFloat(values.price),
         notes: values.notes,
         status: 'scheduled'
       };
 
-      // Create appointment first
+      // Create appointment
       const { data: appointment, error: appointmentError } = await supabase
         .from("appointments")
         .insert(appointmentData)
@@ -207,11 +225,11 @@ export function CreateAppointmentModal({
     }
   };
 
-  // Generate time slots every 30 minutes from 6 AM to 10 PM
-  const timeSlots = Array.from({ length: 32 }, (_, i) => {
-    const hour = Math.floor(i / 2) + 6;
-    const minute = i % 2 === 0 ? "00" : "30";
-    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  // Replace the timeSlots generation with this:
+  const timeSlots = Array.from({ length: 96 }, (_, i) => {
+    const hour = Math.floor(i / 4);
+    const minute = (i % 4) * 15;
+    return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
   });
 
   return (

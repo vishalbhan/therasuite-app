@@ -30,9 +30,39 @@ interface Appointment {
 interface AppointmentsListProps {
   appointments: Appointment[];
   selectedDate: Date;
+  loading?: boolean;
 }
 
-export function AppointmentsList({ appointments, selectedDate }: AppointmentsListProps) {
+function AppointmentSkeleton() {
+  return (
+    <div className="border rounded-lg p-4 hover:shadow transition-shadow animate-pulse">
+      <div className="flex justify-between items-start">
+        <div className="space-y-3">
+          <div className="h-5 w-32 bg-gray-200 rounded"></div>
+          
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 bg-gray-200 rounded"></div>
+            <div className="h-4 w-40 bg-gray-200 rounded"></div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 bg-gray-200 rounded"></div>
+            <div className="h-4 w-24 bg-gray-200 rounded"></div>
+          </div>
+          
+          <div className="h-4 w-16 bg-gray-200 rounded"></div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AppointmentsList({ appointments, selectedDate, loading = false }: AppointmentsListProps) {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -168,7 +198,13 @@ export function AppointmentsList({ appointments, selectedDate }: AppointmentsLis
         Appointments for {format(selectedDate, "MMMM d, yyyy")}
       </h2>
       
-      {appointments.length === 0 ? (
+      {loading ? (
+        <div className="space-y-4">
+          <AppointmentSkeleton />
+          <AppointmentSkeleton />
+          <AppointmentSkeleton />
+        </div>
+      ) : appointments.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">
           No appointments scheduled for this day.
         </p>

@@ -91,7 +91,7 @@ const AuthCard = () => {
   };
 
   return (
-    <Card className="w-[400px]">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>{isLogin ? "Welcome back" : "Create an account"}</CardTitle>
         <CardDescription>

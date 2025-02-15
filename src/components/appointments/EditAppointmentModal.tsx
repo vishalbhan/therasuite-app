@@ -102,11 +102,11 @@ export function EditAppointmentModal({
     }
   };
 
-  // Generate time slots every 30 minutes from 6 AM to 10 PM
-  const timeSlots = Array.from({ length: 32 }, (_, i) => {
-    const hour = Math.floor(i / 2) + 6;
-    const minute = i % 2 === 0 ? "00" : "30";
-    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  // Generate time slots every 15 minutes from 00:00 to 23:45
+  const timeSlots = Array.from({ length: 96 }, (_, i) => {
+    const hour = Math.floor(i / 4);
+    const minute = (i % 4) * 15;
+    return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
   });
 
   return (
