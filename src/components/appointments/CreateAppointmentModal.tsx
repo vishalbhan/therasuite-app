@@ -150,6 +150,7 @@ export function CreateAppointmentModal({
               'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
               'Content-Type': 'application/json',
             },
+            mode: 'cors',
             body: JSON.stringify({
               appointmentId: appointment.id,
               therapistId: user.id,
@@ -159,8 +160,14 @@ export function CreateAppointmentModal({
         );
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Failed to create meeting');
+          let errorMessage = 'Failed to create meeting';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.details || errorMessage;
+          } catch (e) {
+            console.error('Error parsing response:', e);
+          }
+          throw new Error(errorMessage);
         }
       }
 

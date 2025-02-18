@@ -44,8 +44,8 @@ export default function Dashboard() {
   }, [selectedDate]);
 
   return (
-    <div className="grid grid-cols-[300px,1fr] gap-8">
-      <div>
+    <div className="grid md:grid-cols-[300px,1fr] gap-8">
+      <div className="order-2 md:order-1 max-w-[300px] mx-auto mb-20">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -62,10 +62,12 @@ export default function Dashboard() {
         />
       </div>
 
-      <AppointmentsList
-        appointments={appointments}
-        selectedDate={selectedDate}
-      />
+      <div className="order-1 md-order-2">
+        <AppointmentsList
+          appointments={appointments}
+          selectedDate={selectedDate}
+        />
+      </div>
 
       <CreateAppointmentModal
         open={searchParams.get("modal") === "create"}

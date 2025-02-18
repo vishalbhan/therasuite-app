@@ -5,7 +5,8 @@ import {
   Users, 
   Receipt,
   Plus,
-  Settings
+  Settings,
+  Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,19 +46,21 @@ const navItems = [
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <nav className="border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link to="/dashboard" className="text-xl font-bold text-violet-800">
                 TheraSuite
               </Link>
             </div>
 
-            <div className="flex space-x-4">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex md:space-x-4 md:ml-8">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
@@ -80,13 +83,31 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+
             <Button
               onClick={() => navigate("/dashboard?modal=create")}
-              className="bg-violet-800 hover:bg-violet-900"
+              className="bg-violet-800 hover:bg-violet-900 hidden sm:flex"
             >
               <Plus className="h-4 w-4 mr-1" />
-              Create Appointment
+              <span className="hidden sm:inline">Create Appointment</span>
+            </Button>
+
+            <Button
+              onClick={() => navigate("/dashboard?modal=create")}
+              className="bg-violet-800 hover:bg-violet-900 sm:hidden"
+              size="icon"
+            >
+              <Plus className="h-4 w-4" />
             </Button>
 
             <TooltipProvider>
@@ -98,7 +119,7 @@ export function Navbar() {
                     onClick={() => navigate("/settings")}
                     className="text-gray-600 hover:text-gray-900"
                   >
-                    <Settings className="scale-[1.2]" />
+                    <Settings className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -108,6 +129,34 @@ export function Navbar() {
             </TooltipProvider>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t py-2">
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.href;
+                const Icon = item.icon;
+                
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                      ${isActive 
+                        ? 'bg-violet-100 text-violet-900' 
+                        : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
+                      }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

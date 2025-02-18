@@ -1,22 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import cors from 'https://deno.land/std@0.168.0/http/cors.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('ENVIRONMENT') === 'production' 
-    ? 'https://www.therasuite.app' 
-    : 'http://localhost:8080',
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
-}
+};
 
 // Base64 encode the API key
 const DYTE_BASE64_AUTH = btoa(`${Deno.env.get('DYTE_ORG_ID')}:${Deno.env.get('DYTE_API_KEY')}`);
 
-serve(async (req) => {
+// Add CORS headers
+const corsHandler = cors({
+  origin: [
+    'https://www.therasuite.app',  // Your production domain
+    'http://localhost:8080',       // Your local development domain
+  ],
+  credentials: true,
+});
+
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {

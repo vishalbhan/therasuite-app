@@ -19,18 +19,18 @@ export function AuthLayout() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex">
-      {/* Marketing Section - Left Column */}
-      <div className="hidden lg:block lg:w-1/2">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Marketing Section - Hidden on mobile, full height on desktop */}
+      <div className="hidden lg:block lg:w-1/2 lg:fixed lg:left-0 lg:h-screen">
         <MarketingSection />
       </div>
 
-      {/* Auth Section - Right Column */}
-      <div className="w-full lg:w-1/2 flex flex-col">
-        <main className="flex-1 flex items-center justify-center p-8">
+      {/* Auth Section - Full width on mobile, half width on desktop */}
+      <div className="w-full lg:w-1/2 lg:ml-[50%] flex flex-col">
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-violet-800 mb-2">TheraSuite</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold text-violet-800 mb-2">TheraSuite</h1>
               <p className="text-gray-600">Streamline your therapy practice</p>
             </div>
             <AuthCard />
