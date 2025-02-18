@@ -18,6 +18,8 @@ import AuthCard from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import ClientVideoSession from "@/pages/ClientVideoSession";
 import Settings from "@/pages/Settings";
+import LogRocket from 'logrocket';
+LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
   return (

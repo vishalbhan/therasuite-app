@@ -24,8 +24,8 @@ serve(async (req) => {
             <p>Dear ${data.client_name},</p>
             <p>Your appointment has been confirmed for:</p>
             <ul>
-              <li>Date: ${new Date(data.session_date).toLocaleDateString()}</li>
-              <li>Time: ${new Date(data.session_date).toLocaleTimeString()}</li>
+              <li>Date: ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(',')[0]}</li>
+              <li>Time: ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}</li>
               <li>Duration: ${data.session_length} minutes</li>
               <li>Type: ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
             </ul>
@@ -43,7 +43,7 @@ serve(async (req) => {
           html: `
             <h1>Appointment Cancelled</h1>
             <p>Dear ${data.client_name},</p>
-            <p>Your appointment scheduled for ${new Date(data.session_date).toLocaleString()} has been cancelled.</p>
+            <p>Your appointment scheduled for ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} has been cancelled.</p>
             <p>If you would like to reschedule, please book a new appointment.</p>
             <p>We apologize for any inconvenience.</p>
           `
@@ -58,7 +58,7 @@ serve(async (req) => {
           html: `
             <h1>Appointment Reminder</h1>
             <p>Dear ${data.client_name},</p>
-            <p>This is a reminder about your appointment tomorrow at ${new Date(data.session_date).toLocaleTimeString()}.</p>
+            <p>This is a reminder about your appointment tomorrow at ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}.</p>
             ${data.session_type === 'video' && data.video_link 
               ? `<p>Join your video call here: <a href="${data.video_link}">${data.video_link}</a></p>`
               : ''

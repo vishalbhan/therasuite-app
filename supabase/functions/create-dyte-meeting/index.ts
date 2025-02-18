@@ -1,28 +1,32 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import cors from 'https://deno.land/std@0.168.0/http/cors.ts'
 
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://www.therasuite.app',  // Always use production URL
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+}
 
 // Base64 encode the API key
 const DYTE_BASE64_AUTH = btoa(`${Deno.env.get('DYTE_ORG_ID')}:${Deno.env.get('DYTE_API_KEY')}`);
 
-// Add CORS headers
-const corsHandler = cors({
-  origin: [
-    'https://www.therasuite.app',  // Your production domain
-    'http://localhost:8080',       // Your local development domain
-  ],
-  credentials: true,
-});
-
-serve(async (req: Request) => {
+serve(async (req) => {
+  // Log request details for debugging
+  console.log('Request origin:', req.headers.get('origin'));
+  console.log('Environment:', Deno.env.get('ENVIRONMENT'));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    // Set CORS headers based on the request origin
+    const origin = req.headers.get('origin');
+    const headers = {
+      ...corsHeaders,
+      'Access-Control-Allow-Origin': origin === 'http://localhost:8080' ? origin : 'https://www.therasuite.app'
+    };
+    
+    console.log('Responding to OPTIONS with headers:', headers);
+    return new Response('ok', { headers })
   }
 
   try {
@@ -89,11 +93,18 @@ serve(async (req: Request) => {
         meeting_id: meeting.id,
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Access-Control-Allow-Origin': req.headers.get('origin') === 'http://localhost:8080' 
+            ? 'http://localhost:8080' 
+            : 'https://www.therasuite.app',
+          'Content-Type': 'application/json'
+        },
       }
     )
   } catch (error) {
     console.error('Error creating meeting:', error)
+    console.error('Request origin:', req.headers.get('origin'))
     return new Response(
       JSON.stringify({ 
         error: 'Failed to create meeting',
@@ -101,7 +112,13 @@ serve(async (req: Request) => {
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Access-Control-Allow-Origin': req.headers.get('origin') === 'http://localhost:8080' 
+            ? 'http://localhost:8080' 
+            : 'https://www.therasuite.app',
+          'Content-Type': 'application/json'
+        },
       }
     )
   }
