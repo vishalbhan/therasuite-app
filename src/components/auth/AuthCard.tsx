@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import LogRocket from "logrocket";
 
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -28,12 +29,25 @@ const AuthCard = () => {
         
         if (error) throw error;
 
+        // Add LogRocket identification
+        LogRocket.identify(data.user.id, {
+          email: data.user.email,
+        });
+
         // Check if profile is complete
         const { data: profile } = await supabase
           .from('profiles')
-          .select('is_onboarding_complete')
+          .select('is_onboarding_complete, full_name')
           .eq('id', data.user.id)
           .single();
+
+        // Update LogRocket with name if available
+        if (profile?.full_name) {
+          LogRocket.identify(data.user.id, {
+            email: data.user.email,
+            name: profile.full_name,
+          });
+        }
 
         navigate(profile?.is_onboarding_complete ? "/dashboard" : "/onboarding");
       } else {
