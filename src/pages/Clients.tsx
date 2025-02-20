@@ -36,8 +36,7 @@ export default function Clients() {
               session_date
             )
           `)
-          .eq('therapist_id', user.id)
-          .order('name');
+          .eq('therapist_id', user.id);
 
         if (error) throw error;
 
@@ -50,7 +49,20 @@ export default function Clients() {
             : null
         }));
 
-        setClients(processedClients);
+        // Sort clients by last appointment date
+        const sortedClients = processedClients.sort((a, b) => {
+          // If both have appointments, sort by date (most recent first)
+          if (a.last_appointment_date && b.last_appointment_date) {
+            return new Date(b.last_appointment_date).getTime() - new Date(a.last_appointment_date).getTime();
+          }
+          // If only one has appointments, put the one with appointments first
+          if (a.last_appointment_date) return -1;
+          if (b.last_appointment_date) return 1;
+          // If neither has appointments, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+        setClients(sortedClients);
       } catch (error) {
         toast.error("Error fetching clients");
       } finally {

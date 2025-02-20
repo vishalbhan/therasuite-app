@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Eye } from 'lucide-react';
+import { NotesModal } from '@/components/appointments/NotesModal';
 
 export default function ClientDetails() {
   const navigate = useNavigate();
@@ -16,6 +17,10 @@ export default function ClientDetails() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [viewingNotes, setViewingNotes] = useState<{
+    appointmentId: string;
+    notes: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchClientDetails = async () => {
@@ -116,9 +121,13 @@ export default function ClientDetails() {
             {appointments.map((appointment) => (
               <div
                 key={appointment.id}
-                className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
+                onClick={() => setViewingNotes({
+                  appointmentId: appointment.id,
+                  notes: appointment.notes || ''
+                })}
+                className="border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
               >
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-start">
                   <div>
                     <div className="font-medium">
                       {format(new Date(appointment.session_date), 'PPP p')}
@@ -126,6 +135,11 @@ export default function ClientDetails() {
                     <div className="text-sm text-gray-500">
                       {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                     </div>
+                    {appointment.notes && (
+                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">
+                        {appointment.notes}
+                      </div>
+                    )}
                   </div>
                   <div className={`px-2 py-1 rounded-full text-xs capitalize
                     ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
@@ -150,6 +164,13 @@ export default function ClientDetails() {
           }
         }}
         defaultClient={client}
+      />
+
+      <NotesModal
+        open={!!viewingNotes}
+        onOpenChange={(open) => !open && setViewingNotes(null)}
+        appointmentId={viewingNotes?.appointmentId || ''}
+        existingNotes={viewingNotes?.notes || ''}
       />
     </div>
   );

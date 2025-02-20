@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, addMinutes, isWithinInterval } from "date-fns";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { emailService } from '@/lib/email';
+import { NotesModal } from "./NotesModal";
 
 interface Appointment {
   id: string;
@@ -25,6 +26,7 @@ interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled';
   price: number;
   client_email: string;
+  notes?: string;
 }
 
 interface AppointmentsListProps {
@@ -69,6 +71,10 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [viewingNotes, setViewingNotes] = useState<{
+    appointmentId: string;
+    notes: string;
+  } | null>(null);
 
   const formatTimeRange = (startTime: string, lengthInMinutes: number) => {
     const startDate = new Date(startTime);
@@ -277,6 +283,24 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                   </Button>
                 </div>
               )}
+              <div className="flex justify-end mt-4 space-x-2">
+                {appointment.notes && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingNotes({
+                        appointmentId: appointment.id,
+                        notes: appointment.notes
+                      });
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Notes
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -300,6 +324,13 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
         confirmText="Yes, cancel appointment"
         cancelText="No, keep appointment"
         onConfirm={handleCancelConfirm}
+      />
+
+      <NotesModal
+        open={!!viewingNotes}
+        onOpenChange={(open) => !open && setViewingNotes(null)}
+        appointmentId={viewingNotes?.appointmentId || ''}
+        existingNotes={viewingNotes?.notes || ''}
       />
     </div>
   );

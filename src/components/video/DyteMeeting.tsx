@@ -3,6 +3,7 @@ import DyteClient from '@dytesdk/web-core';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { VideoMeeting } from '@/types/dyte';
+import { NotesModal } from "@/components/appointments/NotesModal";
 
 interface DyteMeetingProps {
   appointmentId: string;
@@ -21,6 +22,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [meeting, setMeeting] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNotesModal, setShowNotesModal] = useState(false);
 
   useEffect(() => {
     const setupMeeting = async () => {
@@ -52,6 +54,11 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           },
         });
 
+        // Add meeting state change listener
+        dyteClient.self.on('roomLeft', () => {
+          setShowNotesModal(true);
+        });
+
         setMeeting(dyteClient);
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
@@ -62,6 +69,13 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
     };
 
     setupMeeting();
+
+    // Cleanup function
+    return () => {
+      if (meeting) {
+        meeting.self.removeAllListeners('roomLeft');
+      }
+    };
   }, [appointmentId]);
 
   if (loading) {
@@ -91,14 +105,29 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   }
 
   return (
-    <DyteMeeting
-      meeting={meeting}
-      className="w-full h-screen"
-      showSetupScreen
-      onError={(error) => {
-        console.error('Dyte meeting error:', error);
-        setError('Error in video call. Please try refreshing the page.');
-      }}
-    />
+    <>
+      <DyteMeeting
+        meeting={meeting}
+        className="w-full h-screen"
+        showSetupScreen
+        onMeetingEnded={() => {
+          setShowNotesModal(true);
+        }}
+        onError={(error) => {
+          console.error('Dyte meeting error:', error);
+          setError('Error in video call. Please try refreshing the page.');
+        }}
+      />
+
+      <NotesModal
+        open={showNotesModal}
+        onOpenChange={setShowNotesModal}
+        appointmentId={appointmentId}
+        onSuccess={() => {
+          // Redirect to the dashboard after saving notes
+          window.location.href = '/dashboard';
+        }}
+      />
+    </>
   );
 } 
