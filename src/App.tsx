@@ -19,6 +19,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import ClientVideoSession from "@/pages/ClientVideoSession";
 import Settings from "@/pages/Settings";
 import LogRocket from 'logrocket';
+import ClientDetails from "@/pages/ClientDetails";
 LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
@@ -43,6 +44,7 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/clients" element={<Clients />} />
+                  <Route path="/clients/:clientId" element={<ClientDetails />} />
                   <Route path="/earnings" element={<Earnings />} />
                   <Route path="/settings" element={<Settings />} />
                 </Route>

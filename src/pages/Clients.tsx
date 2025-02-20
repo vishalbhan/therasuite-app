@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 interface Client {
   id: string;
@@ -18,7 +12,7 @@ interface Client {
   email: string;
   avatar_color: string;
   initials: string;
-  updated_at: string;
+  last_appointment_date: string | null;
 }
 
 export default function Clients() {
@@ -26,6 +20,7 @@ export default function Clients() {
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -35,12 +30,27 @@ export default function Clients() {
 
         const { data, error } = await supabase
           .from('clients')
-          .select('*')
+          .select(`
+            *,
+            appointments (
+              session_date
+            )
+          `)
           .eq('therapist_id', user.id)
           .order('name');
 
         if (error) throw error;
-        setClients(data);
+
+        const processedClients = data.map(client => ({
+          ...client,
+          last_appointment_date: client.appointments?.length > 0 
+            ? client.appointments.sort((a: any, b: any) => 
+                new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
+              )[0].session_date
+            : null
+        }));
+
+        setClients(processedClients);
       } catch (error) {
         toast.error("Error fetching clients");
       } finally {
@@ -84,7 +94,8 @@ export default function Clients() {
         {clients.map((client) => (
           <div
             key={client.id}
-            className="bg-white rounded-lg shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+            onClick={() => navigate(`/clients/${client.id}`)}
+            className="bg-white rounded-lg shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-shadow cursor-pointer"
           >
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
@@ -95,22 +106,12 @@ export default function Clients() {
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{client.name}</div>
               <div className="text-sm text-gray-500 truncate">{client.email}</div>
+              <div className="text-xs text-gray-400 mt-1">
+                {client.last_appointment_date 
+                  ? `Last appointment: ${format(new Date(client.last_appointment_date), 'MMM d, yyyy')}`
+                  : 'No appointments yet'}
+              </div>
             </div>
-            <div className="text-xs text-gray-400">
-              Last updated: {new Date(client.updated_at).toLocaleDateString()}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleCreateAppointment(client)}>
-                  Create appointment
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         ))}
       </div>
