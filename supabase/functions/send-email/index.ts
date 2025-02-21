@@ -84,6 +84,24 @@ serve(async (req) => {
         });
         break;
 
+      case 'payment_invoice':
+        await resend.emails.send({
+          from: 'payments@therasuite.app',
+          to: data.client_email,
+          subject: 'Payment Invoice for Your Session',
+          html: `
+            <h1>Payment Invoice</h1>
+            <p>Dear ${data.client_name},</p>
+            <p>Here is your invoice for the session on ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.</p>
+            <p><strong>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</strong></p>
+            <h2>Payment Details:</h2>
+            <pre>${data.payment_details}</pre>
+            <p>Please complete the payment at your earliest convenience.</p>
+            <p>Thank you for your business!</p>
+          `
+        });
+        break;
+
       default:
         throw new Error('Invalid email type');
     }

@@ -106,5 +106,39 @@ export const emailService = {
       console.error('Failed to send reminder email:', error);
       throw error;
     }
+  },
+
+  // Send payment invoice
+  async sendPaymentInvoice(data: {
+    client_name: string;
+    client_email: string;
+    session_date: string;
+    price: number;
+    payment_details: string;
+  }) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          type: 'payment_invoice',
+          data
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+    } catch (error) {
+      console.error('Failed to send payment invoice:', error);
+      throw error;
+    }
   }
 }; 

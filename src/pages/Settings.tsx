@@ -23,91 +23,112 @@ import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Power } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
+import { Database } from '@/types/database.types';
 
-// Use the same form schema from OnboardingForm
+// Update the form schema to match database types
 const formSchema = z.object({
-  photo_url: z.string().optional(),
+  photo_url: z.string().optional().nullable(),
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   professional_type: z.enum(['psychologist', 'therapist', 'coach']),
   working_hours: z.record(z.string(), z.array(z.object({
     start: z.string(),
     end: z.string(),
     enabled: z.boolean()
-  }))),
+  }))).nullable(),
   session_length: z.number().min(30).max(180),
   session_type: z.enum(['video', 'in_person', 'hybrid']),
   collect_payments: z.boolean(),
-  price_per_session: z.union([z.string(), z.number()]).optional(),
+  price_per_session: z.union([z.string(), z.number()]).optional().nullable(),
+  payment_details: z.string().optional().nullable(),
   location: z.object({
     address: z.string(),
     city: z.string(),
     state: z.string(),
     country: z.string(),
     postal_code: z.string()
-  }).optional(),
+  }).optional().nullable(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function Settings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      collect_payments: false,
+      photo_url: null,
+      payment_details: '',
+      price_per_session: null,
+      location: null,
+    }
   });
 
   useEffect(() => {
     const loadProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/');
-        return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/');
+          return;
+        }
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+        
+        // Only reset form with non-null values from profile
+        const formData = Object.entries(profile).reduce((acc, [key, value]) => {
+          if (value !== null) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as Partial<FormValues>);
+
+        form.reset(formData);
+      } catch (error) {
+        toast.error("Failed to load profile");
+      } finally {
+        setLoading(false);
       }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load profile",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      form.reset(profile);
-      setLoading(false);
     };
 
     loadProfile();
   }, [form, navigate]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
+      setIsSaving(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
+      const updateData = Object.entries(values).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Database['public']['Tables']['profiles']['Update']);
+
       const { error } = await supabase
         .from('profiles')
-        .update(values)
+        .update(updateData)
         .eq('id', session.user.id);
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -116,11 +137,7 @@ export default function Settings() {
       await supabase.auth.signOut();
       navigate("/");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
+      toast.error("Failed to sign out");
     }
   };
 
@@ -365,26 +382,50 @@ export default function Settings() {
               />
 
               {form.watch('collect_payments') && (
-                <FormField
-                  control={form.control}
-                  name="price_per_session"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price per Session ($)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          placeholder="Enter amount"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <>
+                  <FormField
+                    control={form.control}
+                    name="price_per_session"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price per Session ($)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            placeholder="Enter amount"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="payment_details"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Details</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter your payment details (e.g., bank account, PayPal)"
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value || '')}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          These details will be shared with clients when sending invoices
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -478,8 +519,19 @@ export default function Settings() {
 
           <Separator className="my-8" />
 
-          <Button type="submit" className="w-full">
-            Save Changes
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <span className="loading loading-spinner loading-sm mr-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
           </Button>
         </form>
       </Form>

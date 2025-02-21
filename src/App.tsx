@@ -8,7 +8,6 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import Schedule from "@/pages/Schedule";
 import Clients from "@/pages/Clients";
-import Earnings from "@/pages/Earnings";
 import Index from "@/pages/Index";
 import Onboarding from "@/pages/Onboarding";
 import NotFound from "@/pages/NotFound";
@@ -20,6 +19,7 @@ import ClientVideoSession from "@/pages/ClientVideoSession";
 import Settings from "@/pages/Settings";
 import LogRocket from 'logrocket';
 import ClientDetails from "@/pages/ClientDetails";
+import Invoices from "./pages/Invoices";
 LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
@@ -45,7 +45,7 @@ const App = () => {
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/clients/:clientId" element={<ClientDetails />} />
-                  <Route path="/earnings" element={<Earnings />} />
+                  <Route path="/invoices" element={<Invoices />} />
                   <Route path="/settings" element={<Settings />} />
                 </Route>
               </Route>
