@@ -9,7 +9,11 @@ export interface Database {
           full_name: string
           photo_url: string | null
           professional_type: 'psychologist' | 'therapist' | 'coach' | null
-          working_hours: Record<string, Array<{ start: string; end: string; enabled: boolean }>> | null
+          working_hours: Record<string, Array<{
+            start: string;
+            end: string;
+            enabled: boolean;
+          }>> | null
           session_length: number | null
           session_type: 'video' | 'in_person' | 'hybrid' | null
           collect_payments: boolean | null
@@ -30,7 +34,11 @@ export interface Database {
           created_at?: string | null
           photo_url?: string | null
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null
-          working_hours?: Record<string, Array<{ start: string; end: string; enabled: boolean }>> | null
+          working_hours?: Record<string, Array<{
+            start: string;
+            end: string;
+            enabled: boolean;
+          }>> | null
           session_length?: number | null
           session_type?: 'video' | 'in_person' | 'hybrid' | null
           collect_payments?: boolean | null
@@ -51,7 +59,11 @@ export interface Database {
           created_at?: string | null
           photo_url?: string | null
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null
-          working_hours?: Record<string, Array<{ start: string; end: string; enabled: boolean }>> | null
+          working_hours?: Record<string, Array<{
+            start: string;
+            end: string;
+            enabled: boolean;
+          }>> | null
           session_length?: number | null
           session_type?: 'video' | 'in_person' | 'hybrid' | null
           collect_payments?: boolean | null

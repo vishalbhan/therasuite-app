@@ -11,13 +11,13 @@ import {
 import { Label } from '@/components/ui/label';
 import { Copy } from 'lucide-react';
 
-interface TimeSlot {
+export interface TimeSlot {
   start: string;
   end: string;
   enabled: boolean;
 }
 
-interface WorkingHoursInputProps {
+export interface WorkingHoursInputProps {
   value: Record<string, TimeSlot[]>;
   onChange: (hours: Record<string, TimeSlot[]>) => void;
 }

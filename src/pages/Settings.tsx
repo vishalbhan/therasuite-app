@@ -24,6 +24,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Power } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
+import { TimeSlot } from '@/components/onboarding/WorkingHoursInput';
 
 // Update the form schema to match database types
 const formSchema = z.object({
@@ -34,7 +35,7 @@ const formSchema = z.object({
     start: z.string(),
     end: z.string(),
     enabled: z.boolean()
-  }))).nullable(),
+  }).required())).nullable(),
   session_length: z.number().min(30).max(180),
   session_type: z.enum(['video', 'in_person', 'hybrid']),
   collect_payments: z.boolean(),
@@ -50,6 +51,9 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+// This ensures the working_hours type matches exactly what WorkingHoursInput expects
+type WorkingHours = Record<string, TimeSlot[]>;
 
 export default function Settings() {
   const navigate = useNavigate();
