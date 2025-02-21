@@ -96,7 +96,7 @@ export function Navbar() {
 
             <Button
               onClick={() => navigate("/dashboard?modal=create")}
-              className="bg-violet-800 hover:bg-violet-900 hidden sm:flex"
+              className="bg-black hover:bg-gray-900 hidden sm:flex"
             >
               <Plus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Create Appointment</span>
@@ -104,7 +104,7 @@ export function Navbar() {
 
             <Button
               onClick={() => navigate("/dashboard?modal=create")}
-              className="bg-violet-800 hover:bg-violet-900 sm:hidden"
+              className="bg-black hover:bg-gray-900 sm:hidden"
               size="icon"
             >
               <Plus className="h-4 w-4" />
