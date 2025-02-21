@@ -10,6 +10,38 @@ import { Client, Appointment } from '@/types/supabase';
 import { ChevronLeft, Eye } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 
+// Add these type definitions at the top of the file
+type Database = {
+  Tables: {
+    clients: {
+      Row: {
+        id: string
+        therapist_id: string
+        name: string
+        email: string
+        avatar_color: string
+        initials: string
+        created_at: string
+      }
+    }
+    appointments: {
+      Row: {
+        id: string
+        therapist_id: string
+        client_id: string
+        client_name: string
+        client_email: string
+        session_date: string
+        session_length: number
+        session_type: 'video' | 'in-person'
+        status: 'scheduled' | 'completed' | 'cancelled'
+        notes: string | null
+        created_at: string
+      }
+    }
+  }
+}
+
 export default function ClientDetails() {
   const navigate = useNavigate();
   const { clientId } = useParams();
@@ -30,7 +62,7 @@ export default function ClientDetails() {
 
         // Fetch client details
         const { data: clientData, error: clientError } = await supabase
-          .from('clients')
+          .from<'clients', Database['Tables']['clients']['Row']>('clients')
           .select('*')
           .eq('id', clientId)
           .eq('therapist_id', user.id)
@@ -41,14 +73,14 @@ export default function ClientDetails() {
 
         // Fetch client's appointments
         const { data: appointmentsData, error: appointmentsError } = await supabase
-          .from('appointments')
+          .from<'appointments', Database['Tables']['appointments']['Row']>('appointments')
           .select('*')
           .eq('client_id', clientId)
           .eq('therapist_id', user.id)
           .order('session_date', { ascending: false });
 
         if (appointmentsError) throw appointmentsError;
-        setAppointments(appointmentsData);
+        setAppointments(appointmentsData || []);
       } catch (error) {
         toast.error("Error fetching client details");
       } finally {
@@ -128,7 +160,7 @@ export default function ClientDetails() {
                 className="border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
               >
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-grow">
                     <div className="font-medium">
                       {format(new Date(appointment.session_date), 'PPP p')}
                     </div>
@@ -136,8 +168,11 @@ export default function ClientDetails() {
                       {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                     </div>
                     {appointment.notes && (
-                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">
-                        {appointment.notes}
+                      <div className="mt-2 flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-blue-500" />
+                        <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
+                          {appointment.notes}
+                        </div>
                       </div>
                     )}
                   </div>
