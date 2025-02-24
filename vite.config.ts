@@ -22,5 +22,8 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      external: ['zod'], // Add zod to external dependencies
+    }
   }
 }));
