@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
       include: [/node_modules/],
     },
     rollupOptions: {
-      external: [],
+      external: ['zod'],
     }
   },
   optimizeDeps: {
