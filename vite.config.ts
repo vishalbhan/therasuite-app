@@ -18,10 +18,26 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+    dedupe: ['zod', '@supabase/supabase-js'],
+    mainFields: ['browser', 'module', 'main'],
+  },
+  optimizeDeps: {
+    include: [
+      'zod',
+      '@supabase/supabase-js',
+      '@supabase/postgrest-js',
+      '@supabase/realtime-js',
+      '@supabase/storage-js',
+      '@supabase/functions-js'
+    ],
+    esbuildOptions: {
+      target: 'es2020'
     }
   },
   build: {
     outDir: 'dist',
+    target: 'es2020',
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true
