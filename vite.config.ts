@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "zod": path.resolve(__dirname, "node_modules/zod")
     },
     dedupe: ['zod', '@supabase/supabase-js'],
     mainFields: ['browser', 'module', 'main'],
@@ -38,9 +39,19 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     target: 'es2020',
-    commonjsOptions: {
-      include: [/node_modules/],
-      transformMixedEsModules: true
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'zod': ['zod'],
+          'supabase': [
+            '@supabase/supabase-js',
+            '@supabase/postgrest-js',
+            '@supabase/realtime-js',
+            '@supabase/storage-js',
+            '@supabase/functions-js'
+          ]
+        }
+      }
     }
   }
 }));
