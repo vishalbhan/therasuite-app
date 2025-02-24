@@ -14,6 +14,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  const updateAppointments = (updatedAppointments: any[]) => {
+    setAppointments(updatedAppointments);
+  };
+
   useEffect(() => {
     const fetchAppointments = async () => {
       setLoading(true);
@@ -71,6 +75,7 @@ export default function Dashboard() {
         <AppointmentsList
           appointments={appointments}
           selectedDate={selectedDate}
+          onAppointmentsUpdate={updateAppointments}
         />
       </div>
 

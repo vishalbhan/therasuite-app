@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Calendar, History } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -102,30 +103,72 @@ export default function Clients() {
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-6">Clients</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clients.map((client) => (
-          <div
-            key={client.id}
-            onClick={() => navigate(`/clients/${client.id}`)}
-            className="bg-white rounded-lg shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-shadow cursor-pointer"
-          >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-              style={{ backgroundColor: client.avatar_color }}
-            >
-              {client.initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{client.name}</div>
-              <div className="text-sm text-gray-500 truncate">{client.email}</div>
-              <div className="text-xs text-gray-400 mt-1">
-                {client.last_appointment_date 
-                  ? `Last appointment: ${format(new Date(client.last_appointment_date), 'MMM d, yyyy')}`
-                  : 'No appointments yet'}
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
+              <th className="py-4 px-4 text-left font-medium text-gray-500">Email</th>
+              <th className="py-4 px-4 text-left font-medium text-gray-500">Last Appointment</th>
+              <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {clients.map((client) => (
+              <tr 
+                key={client.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => navigate(`/clients/${client.id}`)}
+              >
+                <td className="py-4 px-4">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                      style={{ backgroundColor: client.avatar_color }}
+                    >
+                      {client.initials}
+                    </div>
+                    <span className="font-medium">{client.name}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-gray-500">
+                  {client.email}
+                </td>
+                <td className="py-4 px-4 text-gray-500">
+                  {client.last_appointment_date 
+                    ? format(new Date(client.last_appointment_date), 'MMM d, yyyy')
+                    : 'No appointments yet'}
+                </td>
+                <td className="py-4 px-4 text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCreateAppointment(client);
+                    }}
+                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                  >
+                    <Calendar className="h-4 w-4 mr-0.5" />
+                    New Appointment
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/clients/${client.id}`);
+                    }}
+                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                  >
+                    <History className="h-4 w-4 mr-0.5" />
+                    View History
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <CreateAppointmentModal

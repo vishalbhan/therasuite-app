@@ -16,7 +16,6 @@ export interface Database {
           full_name: string | null;
           photo_url: string | null;
           professional_type: 'psychologist' | 'therapist' | 'coach' | null;
-          working_hours: Json;
           session_length: number | null;
           session_type: 'video' | 'in_person' | 'hybrid' | null;
           collect_payments: boolean;
@@ -32,7 +31,6 @@ export interface Database {
           full_name?: string | null;
           photo_url?: string | null;
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null;
-          working_hours?: Json;
           session_length?: number | null;
           session_type?: 'video' | 'in_person' | 'hybrid' | null;
           collect_payments?: boolean;
@@ -48,7 +46,6 @@ export interface Database {
           full_name?: string | null;
           photo_url?: string | null;
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null;
-          working_hours?: Json;
           session_length?: number | null;
           session_type?: 'video' | 'in_person' | 'hybrid' | null;
           collect_payments?: boolean;

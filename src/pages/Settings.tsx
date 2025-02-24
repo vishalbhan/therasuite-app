@@ -18,42 +18,34 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { WorkingHoursInput } from '@/components/onboarding/WorkingHoursInput';
 import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Power } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
-import { TimeSlot } from '@/components/onboarding/WorkingHoursInput';
 
-// Add DAYS constant
-const DAYS = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-] as const;
+// Update FormValues type to make all fields optional except required ones
+type FormValues = {
+  photo_url: string | null;
+  full_name: string | null;
+  professional_type: 'psychologist' | 'therapist' | 'coach' | null;
+  session_length: number | null;
+  session_type: 'video' | 'in_person' | 'hybrid' | null;
+  collect_payments: boolean;
+  payment_details?: string | null;
+  price_per_session: number | null;
+  location: string | null;
+};
 
-// Update the form schema to match TimeSlot type
-const formSchema = yup.object({
+// Update form schema to match FormValues type
+const formSchema = yup.object().shape({
   photo_url: yup.string().nullable(),
-  full_name: yup.string().min(2, "Name must be at least 2 characters"),
-  professional_type: yup.string().oneOf(['psychologist', 'therapist', 'coach']),
-  working_hours: yup.array().of(
-    yup.object({
-      day: yup.string().required(),
-      start: yup.string().required(),
-      end: yup.string().required(),
-      isWorking: yup.boolean().required()
-    })
-  ).required(),
-  session_length: yup.number().min(30).max(180),
-  session_type: yup.string().oneOf(['video', 'in_person', 'hybrid']),
+  full_name: yup.string().nullable().min(2, "Name must be at least 2 characters"),
+  professional_type: yup.string().nullable().oneOf(['psychologist', 'therapist', 'coach']),
+  session_length: yup.number().nullable().min(30).max(180),
+  session_type: yup.string().nullable().oneOf(['video', 'in_person', 'hybrid']),
   collect_payments: yup.boolean().default(false),
-  payment_details: yup.string().when('collect_payments', {
+  payment_details: yup.string().nullable().when('collect_payments', {
     is: true,
     then: (schema) => schema.required('Payment details are required when collecting payments'),
     otherwise: (schema) => schema.optional()
@@ -65,11 +57,6 @@ const formSchema = yup.object({
   }),
   location: yup.string().nullable(),
 });
-
-type FormValues = yup.InferType<typeof formSchema>;
-
-// This ensures the working_hours type matches exactly what WorkingHoursInput expects
-type WorkingHours = Record<string, TimeSlot[]>;
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -85,12 +72,6 @@ export default function Settings() {
       payment_details: '',
       price_per_session: null,
       location: null,
-      working_hours: DAYS.map(day => ({
-        day,
-        start: '09:00',
-        end: '17:00',
-        isWorking: ['Saturday', 'Sunday'].includes(day) ? false : true
-      }))
     }
   });
 
@@ -271,23 +252,6 @@ export default function Settings() {
                           </FormLabel>
                         </FormItem>
                       </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="working_hours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Working Hours</FormLabel>
-                    <FormControl>
-                      <WorkingHoursInput
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

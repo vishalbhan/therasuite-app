@@ -278,83 +278,96 @@ export default function Invoices() {
         {groupAppointments(appointments).today.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Today</h2>
-            <div className="space-y-4">
-              {groupAppointments(appointments).today.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="border rounded-lg p-4 hover:shadow transition-shadow"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{appointment.client_name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Clock className="h-4 w-4" />
-                        {format(new Date(appointment.session_date), "PPP p")} · {appointment.session_length} mins
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        {appointment.session_type === 'video' ? (
-                          <Video className="h-4 w-4" />
-                        ) : (
-                          <MapPin className="h-4 w-4" />
-                        )}
-                        {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
-                      </div>
-                      <div className="text-sm font-medium mt-1">
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {groupAppointments(appointments).today.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="py-4 px-4">
+                        <div className="font-medium">{appointment.client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Clock className="h-4 w-4" />
+                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500 mt-1">
+                          {appointment.session_type === 'video' ? (
+                            <Video className="h-4 w-4" />
+                          ) : (
+                            <MapPin className="h-4 w-4" />
+                          )}
+                          {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 font-medium">
                         {formatCurrency(appointment.price)}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs
-                        ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
-                          appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'}
-                      `}>
-                        {appointment.payment_status === 'received' ? 'Payment received' :
-                         appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
-                         'Payment pending'}
-                      </span>
-                      {appointment.payment_status === 'pending' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-700 mt-2"
-                          onClick={() => handleSendInvoice(appointment)}
-                          disabled={loadingInvoices[appointment.id]}
-                        >
-                          {loadingInvoices[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Invoice
-                            </>
-                          )}
-                        </Button>
-                      ) : appointment.payment_status === 'invoice_sent' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => handleMarkAsPaid(appointment)}
-                          disabled={loadingPayments[appointment.id]}
-                        >
-                          {loadingPayments[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Updating...
-                            </>
-                          ) : (
-                            'Mark as Paid'
-                          )}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs
+                          ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
+                            appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'}
+                        `}>
+                          {appointment.payment_status === 'received' ? 'Payment received' :
+                           appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
+                           'Payment pending'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {appointment.payment_status === 'pending' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleSendInvoice(appointment)}
+                            disabled={loadingInvoices[appointment.id]}
+                          >
+                            {loadingInvoices[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4 mr-0.5" />
+                                Send Invoice
+                              </>
+                            )}
+                          </Button>
+                        ) : appointment.payment_status === 'invoice_sent' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleMarkAsPaid(appointment)}
+                            disabled={loadingPayments[appointment.id]}
+                          >
+                            {loadingPayments[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Mark as Paid'
+                            )}
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -363,83 +376,96 @@ export default function Invoices() {
         {groupAppointments(appointments).recent.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Recent</h2>
-            <div className="space-y-4">
-              {groupAppointments(appointments).recent.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="border rounded-lg p-4 hover:shadow transition-shadow"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{appointment.client_name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Clock className="h-4 w-4" />
-                        {format(new Date(appointment.session_date), "PPP p")} · {appointment.session_length} mins
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        {appointment.session_type === 'video' ? (
-                          <Video className="h-4 w-4" />
-                        ) : (
-                          <MapPin className="h-4 w-4" />
-                        )}
-                        {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
-                      </div>
-                      <div className="text-sm font-medium mt-1">
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {groupAppointments(appointments).recent.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="py-4 px-4">
+                        <div className="font-medium">{appointment.client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Clock className="h-4 w-4" />
+                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500 mt-1">
+                          {appointment.session_type === 'video' ? (
+                            <Video className="h-4 w-4" />
+                          ) : (
+                            <MapPin className="h-4 w-4" />
+                          )}
+                          {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 font-medium">
                         {formatCurrency(appointment.price)}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs
-                        ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
-                          appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'}
-                      `}>
-                        {appointment.payment_status === 'received' ? 'Payment received' :
-                         appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
-                         'Payment pending'}
-                      </span>
-                      {appointment.payment_status === 'pending' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-700 mt-2"
-                          onClick={() => handleSendInvoice(appointment)}
-                          disabled={loadingInvoices[appointment.id]}
-                        >
-                          {loadingInvoices[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Invoice
-                            </>
-                          )}
-                        </Button>
-                      ) : appointment.payment_status === 'invoice_sent' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => handleMarkAsPaid(appointment)}
-                          disabled={loadingPayments[appointment.id]}
-                        >
-                          {loadingPayments[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Updating...
-                            </>
-                          ) : (
-                            'Mark as Paid'
-                          )}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs
+                          ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
+                            appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'}
+                        `}>
+                          {appointment.payment_status === 'received' ? 'Payment received' :
+                           appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
+                           'Payment pending'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {appointment.payment_status === 'pending' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleSendInvoice(appointment)}
+                            disabled={loadingInvoices[appointment.id]}
+                          >
+                            {loadingInvoices[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4 mr-0.5" />
+                                Send Invoice
+                              </>
+                            )}
+                          </Button>
+                        ) : appointment.payment_status === 'invoice_sent' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleMarkAsPaid(appointment)}
+                            disabled={loadingPayments[appointment.id]}
+                          >
+                            {loadingPayments[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Mark as Paid'
+                            )}
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -448,83 +474,96 @@ export default function Invoices() {
         {groupAppointments(appointments).upcoming.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Upcoming</h2>
-            <div className="space-y-4">
-              {groupAppointments(appointments).upcoming.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="border rounded-lg p-4 hover:shadow transition-shadow"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{appointment.client_name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Clock className="h-4 w-4" />
-                        {format(new Date(appointment.session_date), "PPP p")} · {appointment.session_length} mins
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        {appointment.session_type === 'video' ? (
-                          <Video className="h-4 w-4" />
-                        ) : (
-                          <MapPin className="h-4 w-4" />
-                        )}
-                        {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
-                      </div>
-                      <div className="text-sm font-medium mt-1">
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {groupAppointments(appointments).upcoming.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="py-4 px-4">
+                        <div className="font-medium">{appointment.client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Clock className="h-4 w-4" />
+                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500 mt-1">
+                          {appointment.session_type === 'video' ? (
+                            <Video className="h-4 w-4" />
+                          ) : (
+                            <MapPin className="h-4 w-4" />
+                          )}
+                          {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 font-medium">
                         {formatCurrency(appointment.price)}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs
-                        ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
-                          appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'}
-                      `}>
-                        {appointment.payment_status === 'received' ? 'Payment received' :
-                         appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
-                         'Payment pending'}
-                      </span>
-                      {appointment.payment_status === 'pending' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-700 mt-2"
-                          onClick={() => handleSendInvoice(appointment)}
-                          disabled={loadingInvoices[appointment.id]}
-                        >
-                          {loadingInvoices[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Invoice
-                            </>
-                          )}
-                        </Button>
-                      ) : appointment.payment_status === 'invoice_sent' ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => handleMarkAsPaid(appointment)}
-                          disabled={loadingPayments[appointment.id]}
-                        >
-                          {loadingPayments[appointment.id] ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs mr-2" />
-                              Updating...
-                            </>
-                          ) : (
-                            'Mark as Paid'
-                          )}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs
+                          ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
+                            appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'}
+                        `}>
+                          {appointment.payment_status === 'received' ? 'Payment received' :
+                           appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
+                           'Payment pending'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {appointment.payment_status === 'pending' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleSendInvoice(appointment)}
+                            disabled={loadingInvoices[appointment.id]}
+                          >
+                            {loadingInvoices[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4 mr-0.5" />
+                                Send Invoice
+                              </>
+                            )}
+                          </Button>
+                        ) : appointment.payment_status === 'invoice_sent' ? (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => handleMarkAsPaid(appointment)}
+                            disabled={loadingPayments[appointment.id]}
+                          >
+                            {loadingPayments[appointment.id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs mr-0.5" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Mark as Paid'
+                            )}
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
