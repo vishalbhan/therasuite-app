@@ -22,5 +22,14 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+    rollupOptions: {
+      external: [],
+    }
+  },
+  optimizeDeps: {
+    include: ['zod']
   }
 }));
