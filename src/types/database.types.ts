@@ -91,6 +91,7 @@ export interface Database {
           payment_status: 'pending' | 'invoice_sent' | 'received'
           payment_date: string | null
           created_at: string | null
+          status: 'scheduled' | 'completed' | 'cancelled' | 'expired'
         }
         Insert: {
           id: string
@@ -104,6 +105,7 @@ export interface Database {
           payment_status?: 'pending' | 'invoice_sent' | 'received'
           payment_date?: string | null
           created_at?: string | null
+          status?: 'scheduled' | 'completed' | 'cancelled' | 'expired'
         }
         Update: {
           id?: string
@@ -117,6 +119,7 @@ export interface Database {
           payment_status?: 'pending' | 'invoice_sent' | 'received'
           payment_date?: string | null
           created_at?: string | null
+          status?: 'scheduled' | 'completed' | 'cancelled' | 'expired'
         }
       }
     }

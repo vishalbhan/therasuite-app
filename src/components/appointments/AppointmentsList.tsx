@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval } from "date-fns";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -23,7 +23,7 @@ interface Appointment {
   session_date: string;
   session_length: number;
   session_type: 'video' | 'in_person';
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'expired';
   price: number;
   client_email: string;
   notes?: string;
@@ -64,6 +64,38 @@ function AppointmentSkeleton() {
   );
 }
 
+const checkAndUpdateExpiredAppointments = async (appointments: Appointment[]) => {
+  const now = new Date();
+  const expiredAppointments = appointments.filter(appointment => {
+    const appointmentDate = new Date(appointment.session_date);
+    return (
+      appointment.status === 'scheduled' &&
+      appointmentDate < now &&
+      !isWithinInterval(now, {
+        start: appointmentDate,
+        end: addMinutes(appointmentDate, appointment.session_length)
+      })
+    );
+  });
+
+  if (expiredAppointments.length === 0) return;
+
+  // Update expired appointments in the database
+  for (const appointment of expiredAppointments) {
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: 'expired' })
+      .eq('id', appointment.id);
+
+    if (error) {
+      console.error('Error updating expired appointment:', error);
+    }
+  }
+
+  // Refresh the page to show updated statuses
+  window.location.reload();
+};
+
 export function AppointmentsList({ appointments, selectedDate, loading = false }: AppointmentsListProps) {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -75,6 +107,10 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
     appointmentId: string;
     notes: string;
   } | null>(null);
+
+  useEffect(() => {
+    checkAndUpdateExpiredAppointments(appointments);
+  }, [appointments]);
 
   const formatTimeRange = (startTime: string, lengthInMinutes: number) => {
     const startDate = new Date(startTime);
@@ -241,13 +277,14 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs capitalize
+                  <div className={`px-2 py-1 rounded-full text-xs capitalize
                     ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
                     ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
                     ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
+                    ${appointment.status === 'expired' ? 'bg-gray-100 text-gray-700' : ''}
                   `}>
                     {appointment.status}
-                  </span>
+                  </div>
                   {appointment.status === 'scheduled' && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -257,12 +294,21 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(appointment)}>
-                          Edit
+                          <CalendarPlus className="h-4 w-4 mr-2" />
+                          Reschedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => navigate(`/clients/${appointment.client_id}`)}
+                          className="text-blue-600"
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          View Client History
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleCancelClick(appointment)}
                           className="text-red-600"
                         >
+                          <XCircle className="h-4 w-4 mr-2" />
                           Cancel
                         </DropdownMenuItem>
                       </DropdownMenuContent>

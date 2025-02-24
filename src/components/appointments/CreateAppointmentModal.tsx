@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
+const DISABLED_INPUT_BG = "bg-gray-50";
 
 const formSchema = z.object({
   client_name: z.string().min(2, "Name must be at least 2 characters"),
@@ -78,6 +79,7 @@ interface CreateAppointmentModalProps {
   defaultDate?: string | null;
   defaultClient?: { name: string; email: string } | null;
   onAppointmentCreated?: () => void;
+  disableClientFields?: boolean;
 }
 
 export function CreateAppointmentModal({
@@ -85,7 +87,8 @@ export function CreateAppointmentModal({
   onOpenChange,
   defaultDate,
   defaultClient,
-  onAppointmentCreated
+  onAppointmentCreated,
+  disableClientFields = false
 }: CreateAppointmentModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -339,7 +342,14 @@ export function CreateAppointmentModal({
                 <FormItem>
                   <FormLabel>Client Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input 
+                      placeholder="John Doe" 
+                      {...field} 
+                      disabled={disableClientFields}
+                      className={cn(
+                        disableClientFields && DISABLED_INPUT_BG
+                      )}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -353,7 +363,15 @@ export function CreateAppointmentModal({
                 <FormItem>
                   <FormLabel>Client Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="client@example.com" {...field} />
+                    <Input 
+                      type="email" 
+                      placeholder="client@example.com" 
+                      {...field} 
+                      disabled={disableClientFields}
+                      className={cn(
+                        disableClientFields && DISABLED_INPUT_BG
+                      )}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

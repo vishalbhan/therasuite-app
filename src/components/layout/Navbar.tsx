@@ -96,10 +96,12 @@ export function Navbar() {
 
             <Button
               onClick={() => navigate("/dashboard?modal=create")}
-              className="bg-black hover:bg-gray-900 hidden sm:flex"
+              className="bg-black hover:bg-gray-900 hidden sm:flex group items-center justify-center"
             >
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Create Appointment</span>
+              <Plus className="h-4 w-4 -mr-[0.4rem]" />
+              <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-1 transition-all duration-300 ease-in-out">
+                Create Appointment
+              </span>
             </Button>
 
             <Button

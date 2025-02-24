@@ -9,7 +9,7 @@ export type Database = {
           session_date: string
           session_length: number
           session_type: 'video' | 'in_person'
-          status: 'scheduled' | 'completed' | 'cancelled'
+          status: 'scheduled' | 'completed' | 'cancelled' | 'expired';
           price: number
           created_at?: string
         }
@@ -20,7 +20,7 @@ export type Database = {
           session_date: string
           session_length: number
           session_type: 'video' | 'in_person'
-          status?: 'scheduled' | 'completed' | 'cancelled'
+          status?: 'scheduled' | 'completed' | 'cancelled' | 'expired';
           price: number
           created_at?: string
         }
@@ -31,7 +31,7 @@ export type Database = {
           session_date?: string
           session_length?: number
           session_type?: 'video' | 'in_person'
-          status?: 'scheduled' | 'completed' | 'cancelled'
+          status?: 'scheduled' | 'completed' | 'cancelled' | 'expired';
           price?: number
           created_at?: string
         }
@@ -78,5 +78,5 @@ export type Appointment = {
   session_type: 'video' | 'in_person';
   price: number;
   notes?: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'expired';
 }; 

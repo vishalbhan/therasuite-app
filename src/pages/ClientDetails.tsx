@@ -139,7 +139,7 @@ export default function ClientDetails() {
               setSearchParams(params);
             }}
           >
-            New Appointment
+            Create New Appointment
           </Button>
         </div>
       </div>
@@ -199,6 +199,7 @@ export default function ClientDetails() {
           }
         }}
         defaultClient={client}
+        disableClientFields={true}
       />
 
       <NotesModal
