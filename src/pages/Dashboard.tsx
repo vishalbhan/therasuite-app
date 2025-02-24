@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -41,7 +42,11 @@ export default function Dashboard() {
     };
 
     fetchAppointments();
-  }, [selectedDate]);
+  }, [selectedDate, refreshTrigger]);
+
+  const handleAppointmentCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="grid md:grid-cols-[300px,1fr] gap-8">
@@ -77,6 +82,7 @@ export default function Dashboard() {
             setSearchParams(searchParams);
           }
         }}
+        onAppointmentCreated={handleAppointmentCreated}
       />
     </div>
   );
