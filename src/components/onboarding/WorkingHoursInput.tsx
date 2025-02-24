@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -12,14 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Copy } from 'lucide-react';
 
 export interface TimeSlot {
+  day: string;
   start: string;
   end: string;
-  enabled: boolean;
+  isWorking: boolean;
 }
 
 export interface WorkingHoursInputProps {
-  value: Record<string, TimeSlot[]>;
-  onChange: (hours: Record<string, TimeSlot[]>) => void;
+  value: TimeSlot[];
+  onChange: (value: TimeSlot[]) => void;
 }
 
 const DAYS = [
@@ -38,36 +39,43 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${hour.toString().padStart(2, '0')}:${minute}`;
 });
 
-export const WorkingHoursInput = ({ value, onChange }: WorkingHoursInputProps) => {
+export const WorkingHoursInput = ({ value = [], onChange }: WorkingHoursInputProps) => {
   const [copyFromDay, setCopyFromDay] = useState<string>('Monday');
 
-  const handleTimeChange = (day: string, index: number, type: 'start' | 'end', newTime: string) => {
-    const newHours = { ...value };
-    if (!newHours[day]) {
-      newHours[day] = [{ start: '09:00', end: '17:00', enabled: true }];
+  useEffect(() => {
+    if (value.length === 0) {
+      const initialValue = DAYS.map(day => ({
+        day,
+        start: '09:00',
+        end: '17:00',
+        isWorking: !['Saturday', 'Sunday'].includes(day)
+      }));
+      onChange(initialValue);
     }
-    newHours[day][index][type] = newTime;
-    onChange(newHours);
+  }, [value, onChange]);
+
+  const handleTimeChange = (day: string, type: 'start' | 'end', newTime: string) => {
+    const newValue = value.map(slot => 
+      slot.day === day ? { ...slot, [type]: newTime } : slot
+    );
+    onChange(newValue);
   };
 
-  const handleToggleDay = (day: string, enabled: boolean) => {
-    const newHours = { ...value };
-    if (!newHours[day]) {
-      newHours[day] = [{ start: '09:00', end: '17:00', enabled }];
-    } else {
-      newHours[day] = newHours[day].map(slot => ({ ...slot, enabled }));
-    }
-    onChange(newHours);
+  const handleToggleDay = (day: string, isWorking: boolean) => {
+    const newValue = value.map(slot => 
+      slot.day === day ? { ...slot, isWorking } : slot
+    );
+    onChange(newValue);
   };
 
   const copySchedule = (fromDay: string) => {
-    const newHours = { ...value };
-    DAYS.forEach(day => {
-      if (day !== fromDay) {
-        newHours[day] = [...(value[fromDay] || [])];
-      }
-    });
-    onChange(newHours);
+    const sourceSlot = value.find(slot => slot.day === fromDay);
+    if (!sourceSlot) return;
+
+    const newValue = value.map(slot => 
+      slot.day !== fromDay ? { ...slot, start: sourceSlot.start, end: sourceSlot.end } : slot
+    );
+    onChange(newValue);
   };
 
   return (
@@ -105,16 +113,16 @@ export const WorkingHoursInput = ({ value, onChange }: WorkingHoursInputProps) =
             <div className="flex items-center justify-between">
               <Label className="text-base">{day}</Label>
               <Switch
-                checked={value[day]?.[0]?.enabled ?? false}
+                checked={value.find(slot => slot.day === day)?.isWorking ?? false}
                 onCheckedChange={(checked) => handleToggleDay(day, checked)}
               />
             </div>
 
-            {value[day]?.[0]?.enabled && (
+            {value.find(slot => slot.day === day)?.isWorking && (
               <div className="flex items-center gap-4 ml-4">
                 <Select
-                  value={value[day]?.[0]?.start ?? '09:00'}
-                  onValueChange={(newTime) => handleTimeChange(day, 0, 'start', newTime)}
+                  value={value.find(slot => slot.day === day)?.start ?? '09:00'}
+                  onValueChange={(newTime) => handleTimeChange(day, 'start', newTime)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -131,8 +139,8 @@ export const WorkingHoursInput = ({ value, onChange }: WorkingHoursInputProps) =
                 <span>to</span>
                 
                 <Select
-                  value={value[day]?.[0]?.end ?? '17:00'}
-                  onValueChange={(newTime) => handleTimeChange(day, 0, 'end', newTime)}
+                  value={value.find(slot => slot.day === day)?.end ?? '17:00'}
+                  onValueChange={(newTime) => handleTimeChange(day, 'end', newTime)}
                 >
                   <SelectTrigger>
                     <SelectValue />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from 'yup';
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,43 +35,26 @@ import "react-datepicker/dist/react-datepicker.css";
 import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
+import { Database } from "@/types/supabase";
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
 
-const formSchema = z.object({
-  client_name: z.string().min(2, "Name must be at least 2 characters"),
-  client_email: z.string().email("Invalid email address"),
-  session_date: z.date({
-    required_error: "Please select a date",
-  }),
-  session_time: z.string({
-    required_error: "Please select a time",
-  }),
-  session_length: z.enum(["30", "60", "90", "120"], {
-    required_error: "Please select session length",
-  }),
-  session_type: z.enum(["video", "in_person"], {
-    required_error: "Please select session type",
-  }),
-  price: z.string().min(1, "Price is required").transform((val) => parseFloat(val)),
-  notes: z.string().optional(),
-  is_recurring: z.boolean().default(false),
-  recurring_day: z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).optional(),
-  number_of_sessions: z.union([
-    z.string(),
-    z.number()
-  ]).transform((val) => {
-    if (typeof val === 'string') {
-      if (val === '') return undefined;
-      const num = parseInt(val);
-      return isNaN(num) ? undefined : num;
-    }
-    return val;
-  }).pipe(
-    z.number().min(2).max(52).optional()
-  ),
+const formSchema = yup.object({
+  client_name: yup.string().min(2, "Name must be at least 2 characters").required(),
+  client_email: yup.string().email("Invalid email address").required(),
+  session_date: yup.date().required("Please select a date"),
+  session_time: yup.string().required("Please select a time"),
+  session_length: yup.string().oneOf(["30", "60", "90", "120"], "Invalid session length").required("Please select session length"),
+  session_type: yup.string().oneOf(["video", "in_person"], "Invalid session type").required("Please select session type"),
+  price: yup.string().required("Price is required").transform((value) => parseFloat(value)),
+  notes: yup.string(),
+  is_recurring: yup.boolean().default(false),
+  recurring_day: yup.string().oneOf(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).optional(),
+  number_of_sessions: yup.number().min(2).max(52).optional(),
 });
+
+type FormValues = yup.InferType<typeof formSchema>;
 
 interface CreateAppointmentModalProps {
   open: boolean;
@@ -95,8 +78,8 @@ export function CreateAppointmentModal({
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormValues>({
+    resolver: yupResolver(formSchema),
     defaultValues: {
       client_name: defaultClient?.name || "",
       client_email: defaultClient?.email || "",
@@ -121,7 +104,7 @@ export function CreateAppointmentModal({
     }
   }, [defaultClient, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     setIsCreatingMultiple(values.is_recurring);
     let successCount = 0;
@@ -148,7 +131,7 @@ export function CreateAppointmentModal({
             email: values.client_email,
             avatar_color: generateRandomColor(),
             initials: getInitials(values.client_name),
-          }, {
+          } as Database['public']['Tables']['clients']['Insert'], {
             onConflict: 'therapist_id,email'
           })
           .select()
@@ -156,7 +139,7 @@ export function CreateAppointmentModal({
 
         if (clientError) throw clientError;
 
-        const appointmentData = {
+        const appointmentData: Database['public']['Tables']['appointments']['Insert'] = {
           therapist_id: user.id,
           client_id: client.id,
           client_name: values.client_name,
@@ -171,7 +154,7 @@ export function CreateAppointmentModal({
 
         // Create appointment
         const { data: appointment, error: appointmentError } = await supabase
-          .from("appointments")
+          .from('appointments')
           .insert(appointmentData)
           .select()
           .single();
@@ -243,7 +226,7 @@ export function CreateAppointmentModal({
           toast({
             title: "Warning",
             description: "Appointment created but confirmation email could not be sent",
-            variant: "warning",
+            variant: "default",
           });
           // Return early to avoid showing success message
           onOpenChange(false);

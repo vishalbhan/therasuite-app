@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,31 +26,47 @@ import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
 import { TimeSlot } from '@/components/onboarding/WorkingHoursInput';
 
-// Update the form schema to match database types
-const formSchema = z.object({
-  photo_url: z.string().optional().nullable(),
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  professional_type: z.enum(['psychologist', 'therapist', 'coach']),
-  working_hours: z.record(z.string(), z.array(z.object({
-    start: z.string(),
-    end: z.string(),
-    enabled: z.boolean()
-  }).required())).nullable(),
-  session_length: z.number().min(30).max(180),
-  session_type: z.enum(['video', 'in_person', 'hybrid']),
-  collect_payments: z.boolean(),
-  price_per_session: z.union([z.string(), z.number()]).optional().nullable(),
-  payment_details: z.string().optional().nullable(),
-  location: z.object({
-    address: z.string(),
-    city: z.string(),
-    state: z.string(),
-    country: z.string(),
-    postal_code: z.string()
-  }).optional().nullable(),
+// Add DAYS constant
+const DAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
+// Update the form schema to match TimeSlot type
+const formSchema = yup.object({
+  photo_url: yup.string().nullable(),
+  full_name: yup.string().min(2, "Name must be at least 2 characters"),
+  professional_type: yup.string().oneOf(['psychologist', 'therapist', 'coach']),
+  working_hours: yup.array().of(
+    yup.object({
+      day: yup.string().required(),
+      start: yup.string().required(),
+      end: yup.string().required(),
+      isWorking: yup.boolean().required()
+    })
+  ).required(),
+  session_length: yup.number().min(30).max(180),
+  session_type: yup.string().oneOf(['video', 'in_person', 'hybrid']),
+  collect_payments: yup.boolean().default(false),
+  payment_details: yup.string().when('collect_payments', {
+    is: true,
+    then: (schema) => schema.required('Payment details are required when collecting payments'),
+    otherwise: (schema) => schema.optional()
+  }),
+  price_per_session: yup.number().nullable().when('collect_payments', {
+    is: true,
+    then: (schema) => schema.required('Price per session is required when collecting payments'),
+    otherwise: (schema) => schema.optional()
+  }),
+  location: yup.string().nullable(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = yup.InferType<typeof formSchema>;
 
 // This ensures the working_hours type matches exactly what WorkingHoursInput expects
 type WorkingHours = Record<string, TimeSlot[]>;
@@ -62,13 +78,19 @@ export default function Settings() {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: yupResolver(formSchema),
     defaultValues: {
       collect_payments: false,
       photo_url: null,
       payment_details: '',
       price_per_session: null,
       location: null,
+      working_hours: DAYS.map(day => ({
+        day,
+        start: '09:00',
+        end: '17:00',
+        isWorking: ['Saturday', 'Sunday'].includes(day) ? false : true
+      }))
     }
   });
 
@@ -449,7 +471,7 @@ export default function Settings() {
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="location.address"
+                    name="location"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Street Address</FormLabel>
@@ -463,7 +485,7 @@ export default function Settings() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="location.city"
+                      name="location"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>City</FormLabel>
@@ -476,7 +498,7 @@ export default function Settings() {
                     />
                     <FormField
                       control={form.control}
-                      name="location.state"
+                      name="location"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>State</FormLabel>
@@ -491,7 +513,7 @@ export default function Settings() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="location.postal_code"
+                      name="location"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Postal Code</FormLabel>
@@ -504,7 +526,7 @@ export default function Settings() {
                     />
                     <FormField
                       control={form.control}
-                      name="location.country"
+                      name="location"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>

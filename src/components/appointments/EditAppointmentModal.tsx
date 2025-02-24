@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from 'yup';
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -23,19 +23,16 @@ import { Textarea } from "@/components/ui/textarea";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
+import { Database } from "@/types/database.types";
 
-const formSchema = z.object({
-  session_date: z.date({
-    required_error: "Please select a date",
-  }),
-  session_time: z.string({
-    required_error: "Please select a time",
-  }),
-  session_length: z.enum(["30", "60", "90", "120"], {
-    required_error: "Please select session length",
-  }),
-  notes: z.string().optional(),
+const formSchema = yup.object({
+  session_date: yup.date().required("Please select a date"),
+  session_time: yup.string().required("Please select a time"),
+  session_length: yup.string().oneOf(["30", "60", "90", "120"] as const).required("Please select session length"),
+  notes: yup.string(),
 });
+
+type FormValues = yup.InferType<typeof formSchema>;
 
 interface EditAppointmentModalProps {
   open: boolean;
@@ -57,17 +54,17 @@ export function EditAppointmentModal({
 }: EditAppointmentModalProps) {
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormValues>({
+    resolver: yupResolver(formSchema),
     defaultValues: {
       session_date: appointment ? new Date(appointment.session_date) : undefined,
       session_time: appointment ? format(new Date(appointment.session_date), "HH:mm") : "",
-      session_length: appointment ? appointment.session_length.toString() : "60",
+      session_length: appointment ? String(appointment.session_length) as "30" | "60" | "90" | "120" : "60",
       notes: appointment?.notes || "",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       if (!appointment) return;
 
@@ -76,13 +73,15 @@ export function EditAppointmentModal({
       const session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
 
+      const updateData: Database['public']['Tables']['appointments']['Update'] = {
+        session_date: session_date.toISOString(),
+        session_length: parseInt(values.session_length),
+        notes: values.notes,
+      };
+
       const { error } = await supabase
         .from("appointments")
-        .update({ 
-          session_date,
-          session_length: parseInt(values.session_length),
-          notes: values.notes,
-        })
+        .update(updateData)
         .eq("id", appointment.id);
 
       if (error) throw error;

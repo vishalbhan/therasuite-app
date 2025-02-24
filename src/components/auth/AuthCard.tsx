@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { z } from "zod";
+import * as yup from 'yup';
 import LogRocket from "logrocket";
 
 const AuthCard = () => {
@@ -103,6 +103,11 @@ const AuthCard = () => {
       setLoading(false);
     }
   };
+
+  const schema = yup.object({
+    email: yup.string().email().required(),
+    password: yup.string().min(6).required()
+  });
 
   return (
     <Card className="w-full">

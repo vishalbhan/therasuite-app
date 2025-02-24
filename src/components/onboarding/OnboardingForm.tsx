@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,57 +23,32 @@ import { PhotoUpload } from './PhotoUpload';
 import { Label } from '@/components/ui/label';
 import { format, parse } from 'date-fns';
 
-const formSchema = z.object({
-  photo_url: z.string().optional(),
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  professional_type: z.enum(['psychologist', 'therapist', 'coach']),
-  working_hours: z.record(z.string(), z.array(z.object({
-    start: z.string(),
-    end: z.string(),
-    enabled: z.boolean()
-  }))).transform(hours => {
-    return Object.fromEntries(
-      Object.entries(hours).map(([day, slots]) => [
-        day,
-        slots.map(slot => ({
-          start: slot.start,
-          end: slot.end,
-          enabled: slot.enabled
-        }))
-      ])
-    );
+const formSchema = yup.object({
+  full_name: yup.string().required("Full name is required"),
+  photo_url: yup.string().nullable(),
+  collect_payments: yup.boolean().default(false),
+  payment_details: yup.string().when('collect_payments', {
+    is: true,
+    then: (schema) => schema.required('Payment details are required when collecting payments'),
+    otherwise: (schema) => schema.optional()
   }),
-  session_length: z.number().min(30).max(180),
-  session_type: z.enum(['video', 'in_person', 'hybrid']),
-  collect_payments: z.boolean(),
-  price_per_session: z.union([
-    z.string(),
-    z.number()
-  ]).optional().transform(val => {
-    if (!val) return null;
-    if (typeof val === 'string' && val === '') return null;
-    return Number(val);
+  price_per_session: yup.number().nullable().when('collect_payments', {
+    is: true,
+    then: (schema) => schema.required('Price per session is required when collecting payments'),
+    otherwise: (schema) => schema.optional()
   }),
-  location: z.object({
-    address: z.string(),
-    city: z.string(),
-    state: z.string(),
-    country: z.string(),
-    postal_code: z.string()
-  }).optional().transform(val => {
-    if (!val) return null;
-    if (!val.address || !val.city || !val.state || !val.country || !val.postal_code) return null;
-    return {
-      address: val.address,
-      city: val.city,
-      state: val.state,
-      country: val.country,
-      postal_code: val.postal_code
-    };
-  })
+  location: yup.string().nullable(),
+  working_hours: yup.array().of(
+    yup.object({
+      day: yup.string().required(),
+      start: yup.string().nullable(),
+      end: yup.string().nullable(),
+      isWorking: yup.boolean()
+    })
+  )
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = yup.InferType<typeof formSchema>;
 
 const steps = ['Basic Info', 'Schedule', 'Session Details', 'Payment'];
 
@@ -109,7 +84,7 @@ export const OnboardingForm = () => {
   });
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: yupResolver(formSchema),
     defaultValues: {
       photo_url: '',
       full_name: '',
