@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
 import { ChevronLeft, Eye } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 // Add these type definitions at the top of the file
 type Database = {
@@ -92,11 +93,7 @@ export default function ClientDetails() {
   }, [clientId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-9rem)]">
-        <div className="text-lg text-gray-500">Loading client details...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!client) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Outlet } from "react-router-dom";
 import LogRocket from "logrocket";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export function ProtectedRoute() {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ export function ProtectedRoute() {
   }, [navigate]);
 
   if (isLoading) {
-    return <div>Loading...</div>; // You might want to replace this with a proper loading component
+    return <LoadingScreen />;
   }
 
   return <Outlet />;

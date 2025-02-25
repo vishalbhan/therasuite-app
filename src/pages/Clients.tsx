@@ -6,6 +6,7 @@ import { CreateAppointmentModal } from '@/components/appointments/CreateAppointm
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Calendar, History } from 'lucide-react';
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 interface Client {
   id: string;
@@ -82,11 +83,7 @@ export default function Clients() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-9rem)]">
-        <div className="text-lg text-gray-500">Loading clients...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (clients.length === 0) {

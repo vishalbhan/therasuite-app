@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppointmentsList } from "@/components/appointments/AppointmentsList";
 import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
 import { Calendar } from "@/components/ui/calendar";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,6 +52,10 @@ export default function Dashboard() {
   const handleAppointmentCreated = () => {
     setRefreshTrigger(prev => prev + 1);
   };
+
+  if (loading && appointments.length === 0) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="grid md:grid-cols-[300px,1fr] gap-8">
