@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server/index.ts"
+    "server": "node server/index.ts",
+    "postinstall": "rm -rf node_modules/.cache"
   },
   "dependencies": {
     "@dytesdk/react-ui-kit": "^2.1.5",
