@@ -7,11 +7,15 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft, Eye } from 'lucide-react';
+import { ChevronLeft, Eye, Save } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
-// Add these type definitions at the top of the file
+// Update the Database type definition to include the new fields
 type Database = {
   Tables: {
     clients: {
@@ -20,6 +24,8 @@ type Database = {
         therapist_id: string
         name: string
         email: string
+        phone_number?: string // Add phone number field
+        diagnosis?: string // Add diagnosis field
         avatar_color: string
         initials: string
         created_at: string
@@ -77,6 +83,9 @@ export default function ClientDetails() {
     appointmentId: string;
     notes: string;
   } | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [diagnosis, setDiagnosis] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchClientDetails = async () => {
@@ -84,27 +93,27 @@ export default function ClientDetails() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Fetch client details
+        // Fetch client details - fix the type error
         const { data: clientData, error: clientError } = await supabase
-          .from<'clients', Database['Tables']['clients']['Row']>('clients')
+          .from('clients')
           .select('*')
           .eq('id', clientId)
           .eq('therapist_id', user.id)
           .single();
 
         if (clientError) throw clientError;
-        setClient(clientData);
+        setClient(clientData as Client);
 
-        // Fetch client's appointments
+        // Fetch client's appointments - fix the type error
         const { data: appointmentsData, error: appointmentsError } = await supabase
-          .from<'appointments', Database['Tables']['appointments']['Row']>('appointments')
+          .from('appointments')
           .select('*')
           .eq('client_id', clientId)
           .eq('therapist_id', user.id)
           .order('session_date', { ascending: false });
 
         if (appointmentsError) throw appointmentsError;
-        setAppointments(appointmentsData || []);
+        setAppointments(appointmentsData as Appointment[] || []);
       } catch (error) {
         toast.error("Error fetching client details");
       } finally {
@@ -114,6 +123,42 @@ export default function ClientDetails() {
 
     fetchClientDetails();
   }, [clientId]);
+
+  useEffect(() => {
+    if (client) {
+      setPhoneNumber(client.phone_number || '');
+      setDiagnosis(client.diagnosis || '');
+    }
+  }, [client]);
+
+  const saveClientDetails = async () => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          phone_number: phoneNumber,
+          diagnosis: diagnosis
+        })
+        .eq('id', clientId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      if (client) {
+        setClient({
+          ...client,
+          phone_number: phoneNumber,
+          diagnosis: diagnosis
+        });
+      }
+      
+      setIsEditing(false);
+      toast.success('Client details updated successfully');
+    } catch (error) {
+      toast.error('Failed to update client details');
+      console.error(error);
+    }
+  };
 
   if (loading) {
     return <LoadingScreen />;
@@ -163,6 +208,54 @@ export default function ClientDetails() {
           </Button>
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Client Information</h2>
+            <Button 
+              variant={isEditing ? "default" : "outline"} 
+              onClick={() => isEditing ? saveClientDetails() : setIsEditing(true)}
+              className="flex items-center gap-2"
+            >
+              {isEditing ? (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save
+                </>
+              ) : (
+                "Edit Details"
+              )}
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter phone number"
+                className="mt-1"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <Label htmlFor="diagnosis">Diagnosis</Label>
+              <Textarea
+                id="diagnosis"
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter diagnosis information for this client"
+                className="mt-1 min-h-[120px]"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-xl font-semibold mb-4">Appointment History</h2>

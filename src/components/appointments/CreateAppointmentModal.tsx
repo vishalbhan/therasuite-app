@@ -71,6 +71,13 @@ const formSchema = z.object({
     required_error: "Please select a session type",
     invalid_type_error: "Please select either video call or in-person session",
   }),
+  location: z.object({
+    address: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postal_code: z.string()
+  }).optional(),
   price: z.string({
     required_error: "Price is required",
   })
@@ -126,6 +133,15 @@ interface CreateAppointmentModalProps {
   disableClientFields?: boolean;
 }
 
+// Add a type for the location structure
+type LocationData = {
+  city: string;
+  state: string;
+  address: string;
+  country: string;
+  postal_code: string;
+};
+
 export function CreateAppointmentModal({
   open,
   onOpenChange,
@@ -153,6 +169,13 @@ export function CreateAppointmentModal({
       session_time: defaultDate ? format(new Date(defaultDate), "HH:mm") : "",
       session_length: "60",
       session_type: "video",
+      location: {
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postal_code: ""
+      },
       price: "",
       notes: "",
       is_recurring: false,
@@ -190,6 +213,78 @@ export function CreateAppointmentModal({
 
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    const sessionType = form.watch('session_type');
+    
+    const updateLocation = async () => {
+      if (sessionType === 'in_person') {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: therapist } = await supabase
+          .from('profiles')
+          .select('location')
+          .eq('id', user.id)
+          .single();
+
+        if (therapist?.location) {
+          try {
+            // Parse the location if it's a string
+            let locationData: LocationData;
+            
+            if (typeof therapist.location === 'string') {
+              locationData = JSON.parse(therapist.location);
+            } else {
+              locationData = therapist.location as LocationData;
+            }
+            
+            // Check if we have any non-empty values
+            const hasValidData = Object.values(locationData).some(value => value && value.trim() !== '');
+            
+            if (hasValidData) {
+              form.setValue('location', locationData);
+            } else {
+              form.setValue('location', {
+                address: "",
+                city: "",
+                state: "",
+                country: "",
+                postal_code: ""
+              });
+            }
+          } catch (error) {
+            form.setValue('location', {
+              address: "",
+              city: "",
+              state: "",
+              country: "",
+              postal_code: ""
+            });
+          }
+        } else {
+          form.setValue('location', {
+            address: "",
+            city: "",
+            state: "",
+            country: "",
+            postal_code: ""
+          });
+        }
+      } else {
+        // Clear location when switching to video
+        form.setValue('location', {
+          address: "",
+          city: "",
+          state: "",
+          country: "",
+          postal_code: ""
+        });
+      }
+    };
+
+    updateLocation();
+  }, [form.watch('session_type')]);
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
@@ -314,7 +409,10 @@ export function CreateAppointmentModal({
                 session_type: values.session_type,
                 session_length: parseInt(values.session_length),
                 therapist_name: therapist?.full_name || 'Your Therapist',
-                therapist_photo_url: therapist?.photo_url || ''
+                therapist_photo_url: therapist?.photo_url || '',
+                location: values.session_type === 'in_person' ? 
+                  `${values.location.address}, ${values.location.city}, ${values.location.state} - ${values.location.postal_code}, ${values.location.country}` 
+                  : undefined
               }
             })
           });
@@ -671,6 +769,30 @@ export function CreateAppointmentModal({
                 </FormItem>
               )}
             />
+
+            {form.watch('session_type') === 'in_person' && (
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input
+                        readOnly
+                        value={field.value && Object.values(field.value).some(v => v && v.trim() !== '') ? 
+                          `${field.value.address}, ${field.value.city}, ${field.value.state} - ${field.value.postal_code}, ${field.value.country}`
+                          : 'No location set - please update your location in Settings'
+                        }
+                        placeholder="No location set"
+                        className="text-muted-foreground"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

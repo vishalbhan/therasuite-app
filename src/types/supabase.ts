@@ -57,15 +57,17 @@ export type Database = {
   }
 }
 
-export type Client = {
+export interface Client {
   id: string;
   therapist_id: string;
   name: string;
   email: string;
+  phone_number?: string;
+  diagnosis?: string;
   avatar_color: string;
   initials: string;
   created_at: string;
-};
+}
 
 export type Appointment = {
   id: string;

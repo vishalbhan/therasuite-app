@@ -118,6 +118,10 @@ serve(async (req) => {
                 <li>⏰ <strong>Time:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
+                ${data.session_type === 'in_person' && data.location ? 
+                  `<li>📍 <strong>Location:</strong> ${data.location}</li>` 
+                  : ''
+                }
               </ul>
               ${data.session_type === 'video' ? 
                 '<p><em>You will receive a video call link before the appointment.</em></p>' 
