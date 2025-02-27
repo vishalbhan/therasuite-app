@@ -273,7 +273,7 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                     {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                    {formatCurrency(appointment.price)}
+                    {formatCurrency(appointment.price || 0)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -6,14 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Add a currency formatter utility
-export const formatCurrency = (amount: number, currency: string) => {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: 'INR'
   }).format(amount);
-};
+}
 
 export function getInitials(name: string): string {
   return name

@@ -142,6 +142,58 @@ export function EditAppointmentModal({
         throw new Error(error.message || "Failed to update appointment");
       }
 
+      // Send rescheduling email
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
+
+        // Get therapist details
+        const { data: therapist } = await supabase
+          .from('profiles')
+          .select('full_name, photo_url')
+          .eq('id', appointment.therapist_id)
+          .single();
+
+        const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            type: 'appointment_rescheduled',
+            data: {
+              client_name: appointment.client_name,
+              client_email: appointment.client_email,
+              session_date: session_date.toISOString(),
+              session_type: appointment.session_type,
+              session_length: parseInt(values.session_length),
+              therapist_name: therapist?.full_name || 'Your Therapist',
+              therapist_photo_url: therapist?.photo_url || '',
+              old_date: appointment.session_date
+            }
+          })
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send rescheduling email');
+          // Don't throw, just show a warning toast
+          toast({
+            title: "Warning",
+            description: "Appointment updated but confirmation email could not be sent",
+            variant: "default",
+          });
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Don't throw, just show a warning toast
+        toast({
+          title: "Warning",
+          description: "Appointment updated but confirmation email could not be sent",
+          variant: "default",
+        });
+      }
+
       toast({
         title: "Success",
         description: "Appointment updated successfully",

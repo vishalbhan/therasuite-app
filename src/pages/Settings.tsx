@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { Textarea } from "@/components/ui/textarea";
 
 // Replace formSchema
 const formSchema = z.object({
@@ -41,6 +42,7 @@ const formSchema = z.object({
   professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
   session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
   currency: z.string().min(1, "Currency is required"),
+  payment_details: z.string().nullable(),
   location: z.object({
     address: z.string(),
     city: z.string(),
@@ -67,6 +69,7 @@ export default function Settings() {
       professional_type: null,
       session_type: null,
       currency: 'INR',
+      payment_details: '',
       location: null,
     }
   });
@@ -119,17 +122,29 @@ export default function Settings() {
         return;
       }
 
+      // Create a properly typed update object
+      const updateData = {
+        photo_url: values.photo_url,
+        full_name: values.full_name,
+        professional_type: values.professional_type,
+        session_type: values.session_type,
+        currency: values.currency,
+        payment_details: values.payment_details,
+        location: values.location,
+        updated_at: new Date().toISOString() // Add updated_at timestamp
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update(values)
+        .update(updateData)
         .eq('id', session.user.id);
 
       if (error) throw error;
 
       setGlobalCurrency(values.currency);
-
       toast.success("Settings saved successfully");
     } catch (error) {
+      console.error('Error saving settings:', error);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
@@ -344,6 +359,27 @@ export default function Settings() {
                       <SelectItem value="CAD">Canadian Dollar (C$)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="payment_details"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Details</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      value={field.value || ''}
+                      placeholder="Enter your payment details (e.g., UPI ID, bank account information, payment instructions)"
+                      className="min-h-[100px]"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    These details will be shared with clients for payment processing
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

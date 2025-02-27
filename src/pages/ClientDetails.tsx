@@ -43,6 +43,29 @@ type Database = {
   }
 }
 
+// Add this helper function at the top of the file
+const categorizeAppointments = (appointments: Appointment[]) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(today);
+  todayEnd.setDate(today.getDate() + 1);
+
+  return {
+    today: appointments.filter(apt => {
+      const aptDate = new Date(apt.session_date);
+      return aptDate >= today && aptDate < todayEnd;
+    }),
+    upcoming: appointments.filter(apt => {
+      const aptDate = new Date(apt.session_date);
+      return aptDate >= todayEnd;
+    }),
+    recent: appointments.filter(apt => {
+      const aptDate = new Date(apt.session_date);
+      return aptDate < today;
+    })
+  };
+};
+
 export default function ClientDetails() {
   const navigate = useNavigate();
   const { clientId } = useParams();
@@ -146,43 +169,63 @@ export default function ClientDetails() {
         {appointments.length === 0 ? (
           <p className="text-gray-500">No appointments yet</p>
         ) : (
-          <div className="space-y-4">
-            {appointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                onClick={() => setViewingNotes({
-                  appointmentId: appointment.id,
-                  notes: appointment.notes || ''
-                })}
-                className="border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-grow">
-                    <div className="font-medium">
-                      {format(new Date(appointment.session_date), 'PPP p')}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
-                    </div>
-                    {appointment.notes && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-blue-500" />
-                        <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
-                          {appointment.notes}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs capitalize
-                    ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
-                    ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
-                    ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
-                  `}>
-                    {appointment.status}
-                  </div>
+          <div className="space-y-8">
+            {/* Today's Appointments */}
+            {categorizeAppointments(appointments).today.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Today</h3>
+                <div className="space-y-4">
+                  {categorizeAppointments(appointments).today.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      onClick={() => setViewingNotes({
+                        appointmentId: appointment.id,
+                        notes: appointment.notes || ''
+                      })}
+                    />
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Upcoming Appointments */}
+            {categorizeAppointments(appointments).upcoming.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Upcoming</h3>
+                <div className="space-y-4">
+                  {categorizeAppointments(appointments).upcoming.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      onClick={() => setViewingNotes({
+                        appointmentId: appointment.id,
+                        notes: appointment.notes || ''
+                      })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recent Appointments */}
+            {categorizeAppointments(appointments).recent.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Recent</h3>
+                <div className="space-y-4">
+                  {categorizeAppointments(appointments).recent.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      onClick={() => setViewingNotes({
+                        appointmentId: appointment.id,
+                        notes: appointment.notes || ''
+                      })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -207,4 +250,44 @@ export default function ClientDetails() {
       />
     </div>
   );
-} 
+}
+
+// Add this component for the appointment card to avoid repetition
+const AppointmentCard = ({ 
+  appointment, 
+  onClick 
+}: { 
+  appointment: Appointment; 
+  onClick: () => void;
+}) => (
+  <div
+    onClick={onClick}
+    className="border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
+  >
+    <div className="flex justify-between items-start">
+      <div className="flex-grow">
+        <div className="font-medium">
+          {format(new Date(appointment.session_date), 'PPP p')}
+        </div>
+        <div className="text-sm text-gray-500">
+          {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
+        </div>
+        {appointment.notes && (
+          <div className="mt-2 flex items-center gap-2">
+            <Eye className="h-4 w-4 text-blue-500" />
+            <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
+              {appointment.notes}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className={`px-2 py-1 rounded-full text-xs capitalize
+        ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
+        ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+        ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
+      `}>
+        {appointment.status}
+      </div>
+    </div>
+  </div>
+); 

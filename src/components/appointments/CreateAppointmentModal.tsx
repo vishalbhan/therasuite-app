@@ -292,6 +292,13 @@ export function CreateAppointmentModal({
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('No active session');
 
+          // Get therapist details
+          const { data: therapist } = await supabase
+            .from('profiles')
+            .select('full_name, photo_url')
+            .eq('id', user.id)
+            .single();
+
           const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
             method: 'POST',
             headers: {
@@ -305,7 +312,9 @@ export function CreateAppointmentModal({
                 client_email: values.client_email,
                 session_date: session_date.toISOString(),
                 session_type: values.session_type,
-                session_length: parseInt(values.session_length)
+                session_length: parseInt(values.session_length),
+                therapist_name: therapist?.full_name || 'Your Therapist',
+                therapist_photo_url: therapist?.photo_url || ''
               }
             })
           });
