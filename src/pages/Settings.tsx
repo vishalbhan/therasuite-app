@@ -23,6 +23,14 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Power } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Replace formSchema
 const formSchema = z.object({
@@ -31,20 +39,15 @@ const formSchema = z.object({
     z.string().min(2, "Name must be at least 2 characters").nullable()
   ),
   professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
-  session_length: z.number().min(30).max(180).nullable(),
   session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
-  collect_payments: z.boolean().default(false),
-  payment_details: z.string().nullable().optional()
-    .refine(
-      (val) => !val || val.length > 0, 
-      "Payment details are required when collecting payments"
-    ),
-  price_per_session: z.number().nullable().optional()
-    .refine(
-      (val) => !val || val > 0, 
-      "Price per session is required when collecting payments"
-    ),
-  location: z.string().nullable(),
+  currency: z.string().min(1, "Currency is required"),
+  location: z.object({
+    address: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postal_code: z.string()
+  }).nullable(),
 });
 
 // Update type definition
@@ -59,13 +62,16 @@ export default function Settings() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      collect_payments: false,
       photo_url: null,
-      payment_details: '',
-      price_per_session: null,
+      full_name: '',
+      professional_type: null,
+      session_type: null,
+      currency: 'INR',
       location: null,
     }
   });
+
+  const { setCurrency: setGlobalCurrency } = useCurrency();
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -107,25 +113,24 @@ export default function Settings() {
     try {
       setIsSaving(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
-
-      const updateData = Object.entries(values).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Database['public']['Tables']['profiles']['Update']);
+      
+      if (!session) {
+        navigate('/');
+        return;
+      }
 
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update(values)
         .eq('id', session.user.id);
 
       if (error) throw error;
 
-      toast.success("Profile updated successfully");
+      setGlobalCurrency(values.currency);
+
+      toast.success("Settings saved successfully");
     } catch (error) {
-      toast.error("Failed to update profile");
+      toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
     }
@@ -259,31 +264,10 @@ export default function Settings() {
             <div>
               <h2 className="text-2xl font-semibold">Session Preferences</h2>
               <p className="text-muted-foreground">
-                Manage your session settings and delivery method
+                Manage your session delivery method
               </p>
             </div>
             <div className="space-y-8">
-              <FormField
-                control={form.control}
-                name="session_length"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Default Session Length (minutes)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={30}
-                        max={180}
-                        step={30}
-                        {...field}
-                        onChange={e => field.onChange(parseInt(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="session_type"
@@ -331,92 +315,45 @@ export default function Settings() {
 
           <Separator className="my-8" />
 
-          {/* Payment Settings */}
+          {/* Replace Payment Settings with Currency Settings */}
           <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-semibold">Payment Settings</h2>
+              <h2 className="text-2xl font-semibold">Currency Settings</h2>
               <p className="text-muted-foreground">
-                Configure your payment preferences and session pricing
+                Select your preferred currency for transactions
               </p>
             </div>
-            <div className="space-y-8">
-              <FormField
-                control={form.control}
-                name="collect_payments"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Collect Payments
-                      </FormLabel>
-                      <FormDescription>
-                        Enable payment collection from clients
-                      </FormDescription>
-                    </div>
+            <FormField
+              control={form.control}
+              name="currency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a currency" />
+                      </SelectTrigger>
                     </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {form.watch('collect_payments') && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="price_per_session"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Price per Session ($)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            placeholder="Enter amount"
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="payment_details"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Details</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter your payment details (e.g., bank account, PayPal)"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value || '')}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          These details will be shared with clients when sending invoices
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                    <SelectContent>
+                      <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
+                      <SelectItem value="USD">US Dollar ($)</SelectItem>
+                      <SelectItem value="EUR">Euro (€)</SelectItem>
+                      <SelectItem value="GBP">British Pound (£)</SelectItem>
+                      <SelectItem value="AUD">Australian Dollar (A$)</SelectItem>
+                      <SelectItem value="CAD">Canadian Dollar (C$)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
+            />
           </div>
 
           {(form.watch('session_type') === 'in_person' || 
            form.watch('session_type') === 'hybrid') && (
             <>
               <Separator className="my-8" />
-              {/* Location Settings */}
               <div className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-semibold">Practice Location</h2>
@@ -427,12 +364,19 @@ export default function Settings() {
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="location"
+                    name="location.address"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input 
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const newLocation = { ...form.getValues('location'), address: e.target.value };
+                              form.setValue('location', newLocation);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -441,12 +385,19 @@ export default function Settings() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="location"
+                      name="location.city"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>City</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const newLocation = { ...form.getValues('location'), city: e.target.value };
+                                form.setValue('location', newLocation);
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -454,12 +405,19 @@ export default function Settings() {
                     />
                     <FormField
                       control={form.control}
-                      name="location"
+                      name="location.state"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>State</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const newLocation = { ...form.getValues('location'), state: e.target.value };
+                                form.setValue('location', newLocation);
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -469,12 +427,19 @@ export default function Settings() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="location"
+                      name="location.postal_code"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Postal Code</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const newLocation = { ...form.getValues('location'), postal_code: e.target.value };
+                                form.setValue('location', newLocation);
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -482,12 +447,19 @@ export default function Settings() {
                     />
                     <FormField
                       control={form.control}
-                      name="location"
+                      name="location.country"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const newLocation = { ...form.getValues('location'), country: e.target.value };
+                                form.setValue('location', newLocation);
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

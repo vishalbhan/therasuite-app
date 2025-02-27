@@ -32,17 +32,26 @@ const formSchema = z.object({
   }),
   session_time: z.string({
     required_error: "Please select a session time",
+    invalid_type_error: "Invalid time format",
   }).regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"),
   session_length: z.enum(["30", "60", "90", "120"], {
-    errorMap: () => ({ message: "Please select a valid session length (30, 60, 90, or 120 minutes)" })
+    required_error: "Please select a session length",
+    invalid_type_error: "Please select a valid session length (30, 60, 90, or 120 minutes)",
   }),
-  notes: z.string()
+  notes: z.string({
+    invalid_type_error: "Notes must be text",
+  })
     .max(1000, "Notes cannot exceed 1000 characters")
     .optional()
     .transform(val => val || ""), // Transform empty string to null
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+// Add a type for form errors to track multiple errors
+type FormErrors = {
+  [key: string]: string;
+};
 
 interface EditAppointmentModalProps {
   open: boolean;
@@ -64,6 +73,7 @@ export function EditAppointmentModal({
 }: EditAppointmentModalProps) {
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,7 +86,9 @@ export function EditAppointmentModal({
   });
 
   const onSubmit = async (values: FormValues) => {
-    setFormError(null); // Clear any previous errors
+    setFormError(null);
+    setFormErrors({});
+    
     try {
       if (!appointment) {
         setFormError("No appointment found to update");
@@ -91,6 +103,26 @@ export function EditAppointmentModal({
       // Validate that the new date is in the future
       if (session_date < new Date()) {
         setFormError("Cannot reschedule an appointment to a past date and time");
+        return;
+      }
+
+      // Additional validation
+      const errors: FormErrors = {};
+      
+      if (!values.session_date) {
+        errors.session_date = "Session date is required";
+      }
+      
+      if (!values.session_time) {
+        errors.session_time = "Session time is required";
+      }
+      
+      if (!values.session_length) {
+        errors.session_length = "Session length is required";
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
         return;
       }
 
@@ -130,8 +162,18 @@ export function EditAppointmentModal({
           <DialogTitle>Reschedule Appointment</DialogTitle>
         </DialogHeader>
         {formError && (
-          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md mb-4">
             {formError}
+          </div>
+        )}
+        {Object.keys(formErrors).length > 0 && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md mb-4">
+            <p className="font-semibold mb-1">Please fix the following errors:</p>
+            <ul className="list-disc list-inside">
+              {Object.entries(formErrors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
           </div>
         )}
         <Form {...form}>

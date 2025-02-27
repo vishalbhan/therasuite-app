@@ -38,17 +38,24 @@ import { Loader2 } from "lucide-react";
 import { Database } from "@/types/supabase";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
 
 const formSchema = z.object({
-  client_name: z.string()
+  client_name: z.string({
+    required_error: "Client name is required",
+  })
     .min(2, "Client name must be at least 2 characters")
-    .max(100, "Client name cannot exceed 100 characters"),
-  client_email: z.string()
+    .max(100, "Client name cannot exceed 100 characters")
+    .trim(),
+  client_email: z.string({
+    required_error: "Client email is required",
+  })
     .email("Please enter a valid email address")
-    .min(1, "Email is required"),
+    .min(1, "Email is required")
+    .trim(),
   session_date: z.date({
     required_error: "Please select a session date",
     invalid_type_error: "Invalid date format",
@@ -57,12 +64,16 @@ const formSchema = z.object({
     required_error: "Please select a session time",
   }).regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"),
   session_length: z.enum(["30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"], {
-    errorMap: () => ({ message: "Please select a valid session length" })
+    required_error: "Please select a session length",
+    invalid_type_error: "Please select a valid session length",
   }),
   session_type: z.enum(["video", "in_person"], {
-    errorMap: () => ({ message: "Please select either video call or in-person session" })
+    required_error: "Please select a session type",
+    invalid_type_error: "Please select either video call or in-person session",
   }),
-  price: z.string()
+  price: z.string({
+    required_error: "Price is required",
+  })
     .min(1, "Price is required")
     .regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid price (e.g., 100 or 100.50)")
     .transform((val) => parseFloat(val)),
@@ -70,21 +81,31 @@ const formSchema = z.object({
   is_recurring: z.boolean().default(false),
   recurring_day: z.enum(
     ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-    { errorMap: () => ({ message: "Please select a valid day of the week" })}
+    { 
+      required_error: "Please select a day for recurring appointments",
+      invalid_type_error: "Please select a valid day of the week",
+    }
   ).optional(),
-  number_of_sessions: z.number()
+  number_of_sessions: z.number({
+    required_error: "Number of sessions is required for recurring appointments",
+    invalid_type_error: "Please enter a valid number",
+  })
     .min(2, "Must schedule at least 2 sessions for recurring appointments")
     .max(52, "Cannot schedule more than 52 recurring sessions")
-    .optional()
-    .superRefine((val, ctx) => {
-      if (ctx.parent.is_recurring && !val) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Number of sessions is required for recurring appointments"
-        });
-      }
-    }),
-});
+    .optional(),
+}).refine(
+  (data) => {
+    // If is_recurring is true, number_of_sessions must be provided
+    if (data.is_recurring) {
+      return data.number_of_sessions !== undefined;
+    }
+    return true;
+  },
+  {
+    message: "Number of sessions is required for recurring appointments",
+    path: ["number_of_sessions"], // This tells Zod which field has the error
+  }
+);
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -121,6 +142,7 @@ export function CreateAppointmentModal({
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const { currency } = useCurrency();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -371,7 +393,7 @@ export function CreateAppointmentModal({
           <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
         </DialogHeader>
         {formError && (
-          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md mb-4">
             {formError}
           </div>
         )}
@@ -649,7 +671,14 @@ export function CreateAppointmentModal({
                   <FormLabel>Price</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <span className="absolute left-3 top-2">₹</span>
+                      <span className="absolute left-3 top-2">
+                        {currency === 'USD' ? '$' : 
+                         currency === 'EUR' ? '€' : 
+                         currency === 'GBP' ? '£' : 
+                         currency === 'AUD' ? 'A$' : 
+                         currency === 'CAD' ? 'C$' : 
+                         '₹'}
+                      </span>
                       <Input
                         type="number"
                         step="1"

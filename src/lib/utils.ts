@@ -6,10 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Add a currency formatter utility
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
+export const formatCurrency = (amount: number, currency: string) => {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'INR',
+    currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
@@ -39,3 +39,21 @@ export function generateRandomColor(): string {
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
+export const getCurrencySymbol = (currency: string) => {
+  switch (currency) {
+    case 'USD':
+      return '$';
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    case 'AUD':
+      return 'A$';
+    case 'CAD':
+      return 'C$';
+    case 'INR':
+    default:
+      return '₹';
+  }
+};

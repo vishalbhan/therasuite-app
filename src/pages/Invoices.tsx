@@ -4,8 +4,8 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
 import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface Appointment {
   id: string;
@@ -26,6 +26,16 @@ export default function Invoices() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadingInvoices, setLoadingInvoices] = useState<Record<string, boolean>>({});
   const [loadingPayments, setLoadingPayments] = useState<Record<string, boolean>>({});
+  const { currency } = useCurrency();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   useEffect(() => {
     const fetchData = async () => {

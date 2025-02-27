@@ -65,7 +65,7 @@ const Onboarding = () => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold">Complete Your Profile</h1>
             <p className="text-gray-600 mt-2">
-              Let's set up your professional profile to get started
+              Tell us about yourself and your practice
             </p>
           </div>
           <OnboardingForm />

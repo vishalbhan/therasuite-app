@@ -20,11 +20,12 @@ import Settings from "@/pages/Settings";
 import LogRocket from 'logrocket';
 import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
   return (
-    <>
+    <CurrencyProvider>
       <Helmet>
         <title>TheraSuite</title>
       </Helmet>
@@ -55,7 +56,7 @@ const App = () => {
           </Router>
         </TooltipProvider>
       </QueryClientProvider>
-    </>
+    </CurrencyProvider>
   );
 };
 

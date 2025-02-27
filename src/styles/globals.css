@@ -1,0 +1,18 @@
+/* Add these styles for form error messages */
+.form-message-error {
+  @apply text-red-600 text-sm mt-1;
+}
+
+/* Update the FormMessage component styling */
+[data-valid=false] .form-message {
+  @apply text-red-600;
+}
+
+/* Override shadcn/ui form message styles */
+.form-item .form-message {
+  @apply text-red-600 !important;
+}
+
+.form-item [data-state="error"] {
+  @apply border-red-400 focus:ring-red-400 !important;
+} 
