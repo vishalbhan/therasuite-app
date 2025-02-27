@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,39 +24,31 @@ import { Power } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
 
-// Update FormValues type to make all fields optional except required ones
-type FormValues = {
-  photo_url: string | null;
-  full_name: string | null;
-  professional_type: 'psychologist' | 'therapist' | 'coach' | null;
-  session_length: number | null;
-  session_type: 'video' | 'in_person' | 'hybrid' | null;
-  collect_payments: boolean;
-  payment_details?: string | null;
-  price_per_session: number | null;
-  location: string | null;
-};
-
-// Update form schema to match FormValues type
-const formSchema = yup.object().shape({
-  photo_url: yup.string().nullable(),
-  full_name: yup.string().nullable().min(2, "Name must be at least 2 characters"),
-  professional_type: yup.string().nullable().oneOf(['psychologist', 'therapist', 'coach']),
-  session_length: yup.number().nullable().min(30).max(180),
-  session_type: yup.string().nullable().oneOf(['video', 'in_person', 'hybrid']),
-  collect_payments: yup.boolean().default(false),
-  payment_details: yup.string().nullable().when('collect_payments', {
-    is: true,
-    then: (schema) => schema.required('Payment details are required when collecting payments'),
-    otherwise: (schema) => schema.optional()
-  }),
-  price_per_session: yup.number().nullable().when('collect_payments', {
-    is: true,
-    then: (schema) => schema.required('Price per session is required when collecting payments'),
-    otherwise: (schema) => schema.optional()
-  }),
-  location: yup.string().nullable(),
+// Replace formSchema
+const formSchema = z.object({
+  photo_url: z.string().nullable(),
+  full_name: z.string().nullable().pipe(
+    z.string().min(2, "Name must be at least 2 characters").nullable()
+  ),
+  professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
+  session_length: z.number().min(30).max(180).nullable(),
+  session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
+  collect_payments: z.boolean().default(false),
+  payment_details: z.string().nullable().optional()
+    .refine(
+      (val) => !val || val.length > 0, 
+      "Payment details are required when collecting payments"
+    ),
+  price_per_session: z.number().nullable().optional()
+    .refine(
+      (val) => !val || val > 0, 
+      "Price per session is required when collecting payments"
+    ),
+  location: z.string().nullable(),
 });
+
+// Update type definition
+type FormValues = z.infer<typeof formSchema>;
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -65,7 +57,7 @@ export default function Settings() {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   
   const form = useForm<FormValues>({
-    resolver: yupResolver(formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       collect_payments: false,
       photo_url: null,

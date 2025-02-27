@@ -65,7 +65,7 @@ export function NotesModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Session Notes</DialogTitle>
+          <DialogTitle className="mb-4">Session Notes</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Textarea

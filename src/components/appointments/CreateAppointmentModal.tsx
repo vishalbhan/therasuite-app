@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from 'yup';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,24 +42,51 @@ import { Label } from "@/components/ui/label";
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
 
-const formSchema = yup.object({
-  client_name: yup.string().min(2, "Name must be at least 2 characters").required(),
-  client_email: yup.string().email("Invalid email address").required(),
-  session_date: yup.date().required("Please select a date"),
-  session_time: yup.string().required("Please select a time"),
-  session_length: yup.string().oneOf(
-    ["30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"], 
-    "Invalid session length"
-  ).required("Please select session length"),
-  session_type: yup.string().oneOf(["video", "in_person"], "Invalid session type").required("Please select session type"),
-  price: yup.string().required("Price is required").transform((value) => parseFloat(value)),
-  notes: yup.string(),
-  is_recurring: yup.boolean().default(false),
-  recurring_day: yup.string().oneOf(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).optional(),
-  number_of_sessions: yup.number().min(2).max(52).optional(),
+const formSchema = z.object({
+  client_name: z.string()
+    .min(2, "Client name must be at least 2 characters")
+    .max(100, "Client name cannot exceed 100 characters"),
+  client_email: z.string()
+    .email("Please enter a valid email address")
+    .min(1, "Email is required"),
+  session_date: z.date({
+    required_error: "Please select a session date",
+    invalid_type_error: "Invalid date format",
+  }),
+  session_time: z.string({
+    required_error: "Please select a session time",
+  }).regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"),
+  session_length: z.enum(["30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"], {
+    errorMap: () => ({ message: "Please select a valid session length" })
+  }),
+  session_type: z.enum(["video", "in_person"], {
+    errorMap: () => ({ message: "Please select either video call or in-person session" })
+  }),
+  price: z.string()
+    .min(1, "Price is required")
+    .regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid price (e.g., 100 or 100.50)")
+    .transform((val) => parseFloat(val)),
+  notes: z.string().optional(),
+  is_recurring: z.boolean().default(false),
+  recurring_day: z.enum(
+    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    { errorMap: () => ({ message: "Please select a valid day of the week" })}
+  ).optional(),
+  number_of_sessions: z.number()
+    .min(2, "Must schedule at least 2 sessions for recurring appointments")
+    .max(52, "Cannot schedule more than 52 recurring sessions")
+    .optional()
+    .superRefine((val, ctx) => {
+      if (ctx.parent.is_recurring && !val) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Number of sessions is required for recurring appointments"
+        });
+      }
+    }),
 });
 
-type FormValues = yup.InferType<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 type ClientSelectionMode = 'new' | 'existing';
 
@@ -93,9 +120,10 @@ export function CreateAppointmentModal({
   const [clientMode, setClientMode] = useState<ClientSelectionMode>('new');
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: yupResolver(formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       client_name: defaultClient?.name || "",
       client_email: defaultClient?.email || "",
@@ -144,16 +172,24 @@ export function CreateAppointmentModal({
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     setIsCreatingMultiple(values.is_recurring);
+    setFormError(null);
     let successCount = 0;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
-
-      // Combine date and time for the first appointment
       const [hours, minutes] = values.session_time.split(":");
       let session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
+      
+      if (session_date < new Date()) {
+        setFormError("Cannot schedule an appointment in the past");
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFormError("You must be logged in to create appointments");
+        return;
+      }
 
       // If recurring, create multiple appointments
       const appointmentsToCreate = values.is_recurring ? values.number_of_sessions! : 1;
@@ -293,11 +329,7 @@ export function CreateAppointmentModal({
       form.reset();
     } catch (error: any) {
       console.error('Full error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      setFormError(error.message || "Failed to create appointment");
     } finally {
       setIsSubmitting(false);
       setIsCreatingMultiple(false);
@@ -338,6 +370,11 @@ export function CreateAppointmentModal({
         <DialogHeader>
           <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
         </DialogHeader>
+        {formError && (
+          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
+            {formError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-6">
             <FormField

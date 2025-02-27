@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from 'yup';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -25,14 +25,24 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
 import { Database } from "@/types/database.types";
 
-const formSchema = yup.object({
-  session_date: yup.date().required("Please select a date"),
-  session_time: yup.string().required("Please select a time"),
-  session_length: yup.string().oneOf(["30", "60", "90", "120"] as const).required("Please select session length"),
-  notes: yup.string(),
+const formSchema = z.object({
+  session_date: z.date({
+    required_error: "Please select a new session date",
+    invalid_type_error: "Invalid date format",
+  }),
+  session_time: z.string({
+    required_error: "Please select a session time",
+  }).regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"),
+  session_length: z.enum(["30", "60", "90", "120"], {
+    errorMap: () => ({ message: "Please select a valid session length (30, 60, 90, or 120 minutes)" })
+  }),
+  notes: z.string()
+    .max(1000, "Notes cannot exceed 1000 characters")
+    .optional()
+    .transform(val => val || ""), // Transform empty string to null
 });
 
-type FormValues = yup.InferType<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 interface EditAppointmentModalProps {
   open: boolean;
@@ -53,9 +63,10 @@ export function EditAppointmentModal({
   onSuccess,
 }: EditAppointmentModalProps) {
   const { toast } = useToast();
+  const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: yupResolver(formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       session_date: appointment ? new Date(appointment.session_date) : undefined,
       session_time: appointment ? format(new Date(appointment.session_date), "HH:mm") : "",
@@ -65,13 +76,23 @@ export function EditAppointmentModal({
   });
 
   const onSubmit = async (values: FormValues) => {
+    setFormError(null); // Clear any previous errors
     try {
-      if (!appointment) return;
+      if (!appointment) {
+        setFormError("No appointment found to update");
+        return;
+      }
 
       // Combine date and time
       const [hours, minutes] = values.session_time.split(":");
       const session_date = new Date(values.session_date);
       session_date.setHours(parseInt(hours), parseInt(minutes));
+
+      // Validate that the new date is in the future
+      if (session_date < new Date()) {
+        setFormError("Cannot reschedule an appointment to a past date and time");
+        return;
+      }
 
       const updateData: Database['public']['Tables']['appointments']['Update'] = {
         session_date: session_date.toISOString(),
@@ -84,7 +105,10 @@ export function EditAppointmentModal({
         .update(updateData)
         .eq("id", appointment.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw new Error(error.message || "Failed to update appointment");
+      }
 
       toast({
         title: "Success",
@@ -94,11 +118,8 @@ export function EditAppointmentModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Update error:', error);
+      setFormError(error.message || "Failed to update appointment");
     }
   };
 
@@ -108,6 +129,11 @@ export function EditAppointmentModal({
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
         </DialogHeader>
+        {formError && (
+          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
+            {formError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

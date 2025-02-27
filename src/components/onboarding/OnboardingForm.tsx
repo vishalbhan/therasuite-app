@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,32 +23,24 @@ import { PhotoUpload } from './PhotoUpload';
 import { Label } from '@/components/ui/label';
 import { format, parse } from 'date-fns';
 
-const formSchema = yup.object({
-  full_name: yup.string().required("Full name is required"),
-  photo_url: yup.string().nullable(),
-  collect_payments: yup.boolean().default(false),
-  payment_details: yup.string().when('collect_payments', {
-    is: true,
-    then: (schema) => schema.required('Payment details are required when collecting payments'),
-    otherwise: (schema) => schema.optional()
-  }),
-  price_per_session: yup.number().nullable().when('collect_payments', {
-    is: true,
-    then: (schema) => schema.required('Price per session is required when collecting payments'),
-    otherwise: (schema) => schema.optional()
-  }),
-  location: yup.string().nullable(),
-  working_hours: yup.array().of(
-    yup.object({
-      day: yup.string().required(),
-      start: yup.string().nullable(),
-      end: yup.string().nullable(),
-      isWorking: yup.boolean()
-    })
-  )
+const formSchema = z.object({
+  full_name: z.string().min(1, "Full name is required"),
+  photo_url: z.string().nullable(),
+  collect_payments: z.boolean().default(false),
+  payment_details: z.string().optional()
+    .refine((val) => !val || val.length > 0, "Payment details are required when collecting payments"),
+  price_per_session: z.number().nullable()
+    .refine((val) => !val || val > 0, "Price per session is required when collecting payments"),
+  location: z.string().nullable(),
+  working_hours: z.array(z.object({
+    day: z.string(),
+    start: z.string().nullable(),
+    end: z.string().nullable(),
+    isWorking: z.boolean()
+  }))
 });
 
-type FormValues = yup.InferType<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 const steps = ['Basic Info', 'Schedule', 'Session Details', 'Payment'];
 
@@ -84,7 +76,7 @@ export const OnboardingForm = () => {
   });
 
   const form = useForm<FormValues>({
-    resolver: yupResolver(formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       photo_url: '',
       full_name: '',
