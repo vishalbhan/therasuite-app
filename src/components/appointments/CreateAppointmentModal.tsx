@@ -36,6 +36,8 @@ import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { Database } from "@/types/supabase";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
@@ -45,7 +47,10 @@ const formSchema = yup.object({
   client_email: yup.string().email("Invalid email address").required(),
   session_date: yup.date().required("Please select a date"),
   session_time: yup.string().required("Please select a time"),
-  session_length: yup.string().oneOf(["30", "60", "90", "120"], "Invalid session length").required("Please select session length"),
+  session_length: yup.string().oneOf(
+    ["30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"], 
+    "Invalid session length"
+  ).required("Please select session length"),
   session_type: yup.string().oneOf(["video", "in_person"], "Invalid session type").required("Please select session type"),
   price: yup.string().required("Price is required").transform((value) => parseFloat(value)),
   notes: yup.string(),
@@ -55,6 +60,14 @@ const formSchema = yup.object({
 });
 
 type FormValues = yup.InferType<typeof formSchema>;
+
+type ClientSelectionMode = 'new' | 'existing';
+
+interface ExistingClient {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface CreateAppointmentModalProps {
   open: boolean;
@@ -77,6 +90,9 @@ export function CreateAppointmentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
+  const [clientMode, setClientMode] = useState<ClientSelectionMode>('new');
+  const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const form = useForm<FormValues>({
     resolver: yupResolver(formSchema),
@@ -103,6 +119,27 @@ export function CreateAppointmentModal({
       form.setValue('client_email', defaultClient.email);
     }
   }, [defaultClient, form]);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: clients, error } = await supabase
+        .from('clients')
+        .select('id, name, email')
+        .eq('therapist_id', user.id);
+
+      if (error) {
+        console.error('Error fetching clients:', error);
+        return;
+      }
+
+      setExistingClients(clients);
+    };
+
+    fetchClients();
+  }, []);
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
@@ -268,6 +305,15 @@ export function CreateAppointmentModal({
     }
   };
 
+  const handleClientSelection = (clientId: string) => {
+    const selectedClient = existingClients.find(client => client.id === clientId);
+    if (selectedClient) {
+      form.setValue('client_name', selectedClient.name);
+      form.setValue('client_email', selectedClient.email);
+      setSelectedClientId(clientId);
+    }
+  };
+
   // Replace the timeSlots generation and the FormField for session_time with this:
   const timeSlots = Array.from({ length: 96 }, (_, i) => {
     const hour = Math.floor(i / 4);
@@ -277,7 +323,7 @@ export function CreateAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] my-4">
         {isCreatingMultiple && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -290,10 +336,10 @@ export function CreateAppointmentModal({
           </div>
         )}
         <DialogHeader>
-          <DialogTitle>Create New Appointment</DialogTitle>
+          <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-6">
             <FormField
               control={form.control}
               name="is_recurring"
@@ -318,26 +364,86 @@ export function CreateAppointmentModal({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="client_name"
-              render={({ field }) => (
+            <div className="space-y-4">
+              <RadioGroup
+                defaultValue="new"
+                className="grid grid-cols-2 gap-4"
+                onValueChange={(value: ClientSelectionMode) => {
+                  setClientMode(value);
+                  if (value === 'new') {
+                    form.setValue('client_name', '');
+                    form.setValue('client_email', '');
+                    setSelectedClientId('');
+                  }
+                }}
+              >
+                <div>
+                  <RadioGroupItem
+                    value="new"
+                    id="new"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="new"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  >
+                    <span className="text-sm font-medium">New Client</span>
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem
+                    value="existing"
+                    id="existing"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="existing"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  >
+                    <span className="text-sm font-medium">Existing Client</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {clientMode === 'new' ? (
+                <FormField
+                  control={form.control}
+                  name="client_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="John Doe" 
+                          {...field} 
+                          disabled={disableClientFields}
+                          className={cn(
+                            disableClientFields && DISABLED_INPUT_BG
+                          )}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
                 <FormItem>
-                  <FormLabel>Client Name</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="John Doe" 
-                      {...field} 
-                      disabled={disableClientFields}
-                      className={cn(
-                        disableClientFields && DISABLED_INPUT_BG
-                      )}
-                    />
-                  </FormControl>
-                  <FormMessage />
+                  <FormLabel>Select Client</FormLabel>
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => handleClientSelection(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select an existing client</option>
+                    {existingClients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
                 </FormItem>
               )}
-            />
+            </div>
 
             <FormField
               control={form.control}
@@ -460,13 +566,20 @@ export function CreateAppointmentModal({
                 <FormItem>
                   <FormLabel>Session Length</FormLabel>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     {...field}
                   >
                     <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
                     <option value="60">60 minutes</option>
-                    <option value="90">90 minutes</option>
-                    <option value="120">120 minutes</option>
+                    <option value="75">1 hour 15 minutes</option>
+                    <option value="90">1 hour 30 minutes</option>
+                    <option value="105">1 hour 45 minutes</option>
+                    <option value="120">2 hours</option>
+                    <option value="135">2 hours 15 minutes</option>
+                    <option value="150">2 hours 30 minutes</option>
+                    <option value="165">2 hours 45 minutes</option>
+                    <option value="180">3 hours</option>
                   </select>
                   <FormMessage />
                 </FormItem>

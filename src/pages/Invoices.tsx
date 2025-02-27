@@ -299,7 +299,7 @@ export default function Invoices() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
-                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                          {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
                         </div>
                         <div className="flex items-center gap-2 text-gray-500 mt-1">
                           {appointment.session_type === 'video' ? (
@@ -397,7 +397,7 @@ export default function Invoices() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
-                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                          {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
                         </div>
                         <div className="flex items-center gap-2 text-gray-500 mt-1">
                           {appointment.session_type === 'video' ? (
@@ -495,7 +495,7 @@ export default function Invoices() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
-                          {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
+                          {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
                         </div>
                         <div className="flex items-center gap-2 text-gray-500 mt-1">
                           {appointment.session_type === 'video' ? (
