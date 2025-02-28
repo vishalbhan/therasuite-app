@@ -18,16 +18,30 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
         setLoading(true);
         setError(null);
 
+        // Check authentication status
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        console.log('Auth status:', { session, authError }); // Debug log
+        
+        if (!session) {
+          throw new Error('Not authenticated - please log in');
+        }
+
+        console.log('Attempting to fetch appointment:', appointmentId);
+
         // First check if we get any results at all
         const { data: appointments, error: queryError } = await supabase
           .from('appointments')
           .select('video_meeting_id, video_client_token')
-          .eq('id', appointmentId);
+          .eq('id', appointmentId)
+          .throwOnError();
+
+        console.log('Query response:', { appointments, queryError }); // Debug log
 
         if (queryError) throw queryError;
         
         // Check if we got any results
         if (!appointments || appointments.length === 0) {
+          console.log('No appointments found for ID:', appointmentId); // Debug log
           throw new Error('Appointment not found');
         }
 
