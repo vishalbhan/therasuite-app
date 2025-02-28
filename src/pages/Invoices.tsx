@@ -87,6 +87,18 @@ export default function Invoices() {
         return;
       }
 
+      // Get therapist details
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No active session');
+
+      const { data: therapistProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, photo_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       // Send invoice email
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
@@ -104,7 +116,9 @@ export default function Invoices() {
             client_email: appointment.client_email,
             session_date: appointment.session_date,
             price: appointment.price,
-            payment_details: paymentDetails
+            payment_details: paymentDetails,
+            therapist_name: therapistProfile.full_name,
+            therapist_photo_url: therapistProfile.photo_url
           }
         })
       });

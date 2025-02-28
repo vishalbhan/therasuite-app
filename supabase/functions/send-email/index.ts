@@ -208,6 +208,17 @@ serve(async (req) => {
             <p>Dear ${data.client_name},</p>
 
             <div class="details-box">
+              <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                ${data.therapist_photo_url ? 
+                  `<img src="${data.therapist_photo_url}" alt="Therapist" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 15px;" />` 
+                  : ''
+                }
+                <div>
+                  <p><strong>Your Therapist:</strong><br/>
+                  ${data.therapist_name}</p>
+                </div>
+              </div>
+
               <h2>Invoice Details</h2>
               <p>Here is your invoice for the session on ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.</p>
               <p><strong>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</strong></p>
