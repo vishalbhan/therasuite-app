@@ -33,6 +33,8 @@ interface AppointmentsListProps {
   appointments: Appointment[];
   selectedDate: Date;
   loading?: boolean;
+  onUpdate?: () => void;
+  renderNotes?: (notes: string | undefined) => React.ReactNode;
 }
 
 function AppointmentSkeleton() {
@@ -96,7 +98,13 @@ const checkAndUpdateExpiredAppointments = async (appointments: Appointment[]) =>
   window.location.reload();
 };
 
-export function AppointmentsList({ appointments, selectedDate, loading = false }: AppointmentsListProps) {
+export function AppointmentsList({ 
+  appointments, 
+  selectedDate, 
+  loading = false,
+  onUpdate,
+  renderNotes 
+}: AppointmentsListProps) {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -344,24 +352,32 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                   </Button>
                 </div>
               )}
-              <div className="flex justify-end mt-4 space-x-2">
-                {appointment.notes && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setViewingNotes({
-                        appointmentId: appointment.id,
-                        notes: appointment.notes
-                      });
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View Notes
-                  </Button>
-                )}
-              </div>
+              {appointment.notes && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-4">
+                    {renderNotes && (
+                      <div className="flex-1">
+                        {renderNotes(appointment.notes)}
+                      </div>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewingNotes({
+                          appointmentId: appointment.id,
+                          notes: appointment.notes
+                        });
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Edit Notes
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

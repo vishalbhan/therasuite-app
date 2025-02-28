@@ -2,9 +2,9 @@ import {
   Users, 
   Calendar, 
   Video, 
-  CreditCard, 
-  LineChart, 
-  ShieldCheck 
+  ShieldCheck,
+  MapPin,
+  File
 } from "lucide-react";
 
 const features = [
@@ -24,18 +24,13 @@ const features = [
     icon: Video,
   },
   {
-    title: "Payment Processing",
-    description: "Handle payments and invoicing seamlessly with integrated payment solutions",
-    icon: CreditCard,
+    title: "Flexible Invoicing",
+    description: "Create and send invoices to clients for sessions based on your payment preferences.",
+    icon: File,
   },
   {
-    title: "Progress Tracking",
-    description: "Monitor client progress and treatment outcomes with detailed analytics",
-    icon: LineChart,
-  },
-  {
-    title: "HIPAA Compliant",
-    description: "Ensure client data security with our HIPAA-compliant platform",
+    title: "End-to-end Encrypted",
+    description: "Ensure client data security with our platform, making sure only you can access your client's data",
     icon: ShieldCheck,
   },
 ];

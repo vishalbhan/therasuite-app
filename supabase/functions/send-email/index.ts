@@ -221,8 +221,8 @@ serve(async (req) => {
 
               <h2>Invoice Details</h2>
               <p>Here is your invoice for the session on ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.</p>
-              <p><strong>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</strong></p>
-              
+              <h3>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</h3>
+              <br/>
               <h3>Payment Details:</h3>
               <pre style="background: #fff; padding: 10px; border-radius: 4px;">${data.payment_details}</pre>
             </div>

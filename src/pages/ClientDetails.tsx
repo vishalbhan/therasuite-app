@@ -214,9 +214,17 @@ export default function ClientDetails() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Client Information</h2>
             <Button 
-              variant={isEditing ? "default" : "outline"} 
-              onClick={() => isEditing ? saveClientDetails() : setIsEditing(true)}
-              className="flex items-center gap-2"
+              variant={isEditing ? "outline" : "outline"} 
+              onClick={() => {
+                if (isEditing) {
+                  saveClientDetails();
+                } else {
+                  setIsEditing(true);
+                }
+              }}
+              className={`flex items-center gap-2 ${
+                isEditing ? 'border-primary text-primary hover:bg-primary/10' : ''
+              }`}
             >
               {isEditing ? (
                 <>

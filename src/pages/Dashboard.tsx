@@ -7,50 +7,55 @@ import { AppointmentsList } from "@/components/appointments/AppointmentsList";
 import { CreateAppointmentModal } from "@/components/appointments/CreateAppointmentModal";
 import { Calendar } from "@/components/ui/calendar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { Eye } from "lucide-react";
+
+type Appointment = {
+  id: string;
+  session_date: string;
+  session_length: number;
+  session_type: 'video' | 'in-person';
+  status: 'scheduled' | 'completed' | 'cancelled';
+  notes?: string | null;
+};
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const updateAppointments = (updatedAppointments: any[]) => {
-    setAppointments(updatedAppointments);
+  const fetchAppointments = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const start = startOfDay(selectedDate);
+      const end = endOfDay(selectedDate);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('therapist_id', user.id)
+        .gte('session_date', start.toISOString())
+        .lte('session_date', end.toISOString())
+        .order('session_date', { ascending: true });
+
+      if (error) throw error;
+      setAppointments(data || []);
+    } catch (error: any) {
+      toast.error("Error fetching appointments");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      setLoading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const start = startOfDay(selectedDate);
-        const end = endOfDay(selectedDate);
-
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('therapist_id', user.id)
-          .gte('session_date', start.toISOString())
-          .lte('session_date', end.toISOString())
-          .order('session_date', { ascending: true });
-
-        if (error) throw error;
-        setAppointments(data);
-      } catch (error: any) {
-        toast.error("Error fetching appointments");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAppointments();
-  }, [selectedDate, refreshTrigger]);
+  }, [selectedDate]);
 
   const handleAppointmentCreated = () => {
-    setRefreshTrigger(prev => prev + 1);
+    fetchAppointments();
   };
 
   if (loading && appointments.length === 0) {
@@ -80,7 +85,15 @@ export default function Dashboard() {
         <AppointmentsList
           appointments={appointments}
           selectedDate={selectedDate}
-          onAppointmentsUpdate={updateAppointments}
+          onUpdate={fetchAppointments}
+          renderNotes={(notes) => notes && (
+            <div className="mt-2 flex items-center gap-2">
+              <Eye className="h-4 w-4 text-blue-500" />
+              <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
+                {notes}
+              </div>
+            </div>
+          )}
         />
       </div>
 
