@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { startOfDay, endOfDay, isToday } from "date-fns";
+import { startOfDay, endOfDay, isToday, startOfWeek, endOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AppointmentsList } from "@/components/appointments/AppointmentsList";
@@ -8,6 +8,7 @@ import { CreateAppointmentModal } from "@/components/appointments/CreateAppointm
 import { Calendar } from "@/components/ui/calendar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type Appointment = {
   id: string;
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isWeekView, setIsWeekView] = useState(true);
 
   const fetchAppointments = async () => {
     setLoading(true);
@@ -30,8 +32,8 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const start = startOfDay(selectedDate);
-      const end = endOfDay(selectedDate);
+      const start = isWeekView ? startOfWeek(selectedDate) : startOfDay(selectedDate);
+      const end = isWeekView ? endOfWeek(selectedDate) : endOfDay(selectedDate);
 
       const { data, error } = await supabase
         .from('appointments')
@@ -52,10 +54,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [selectedDate]);
+  }, [selectedDate, isWeekView]);
 
   const handleAppointmentCreated = () => {
     fetchAppointments();
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      setIsWeekView(false);
+    }
   };
 
   if (loading && appointments.length === 0) {
@@ -68,7 +77,7 @@ export default function Dashboard() {
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={(date) => date && setSelectedDate(date)}
+          onSelect={handleDateSelect}
           className="rounded-md border"
           modifiers={{ today: (date) => isToday(date) }}
           modifiersStyles={{
@@ -79,12 +88,23 @@ export default function Dashboard() {
             }
           }}
         />
+        
+        <Button
+          variant="outline"
+          className="w-full mt-4"
+          onClick={() => {
+            setIsWeekView(!isWeekView);
+          }}
+        >
+          Show {isWeekView ? "Daily" : "Weekly"} View
+        </Button>
       </div>
 
       <div className="order-1 md-order-2">
         <AppointmentsList
           appointments={appointments}
           selectedDate={selectedDate}
+          isWeekView={isWeekView}
           onUpdate={fetchAppointments}
           renderNotes={(notes) => notes && (
             <div className="mt-2 flex items-center gap-2">
