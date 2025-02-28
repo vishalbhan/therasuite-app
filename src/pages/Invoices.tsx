@@ -197,13 +197,8 @@ export default function Invoices() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const sortByPaymentStatus = (a: Appointment, b: Appointment) => {
-      const statusPriority = {
-        'pending': 0,
-        'invoice_sent': 1,
-        'received': 2
-      };
-      return statusPriority[a.payment_status] - statusPriority[b.payment_status];
+    const sortByDate = (a: Appointment, b: Appointment) => {
+      return new Date(b.session_date).getTime() - new Date(a.session_date).getTime();
     };
 
     return {
@@ -213,21 +208,21 @@ export default function Invoices() {
           appDate.setHours(0, 0, 0, 0);
           return appDate.getTime() === today.getTime();
         })
-        .sort(sortByPaymentStatus),
+        .sort(sortByDate),
       recent: appointments
         .filter(app => {
           const appDate = new Date(app.session_date);
           appDate.setHours(0, 0, 0, 0);
           return appDate < today;
         })
-        .sort(sortByPaymentStatus),
+        .sort(sortByDate),
       upcoming: appointments
         .filter(app => {
           const appDate = new Date(app.session_date);
           appDate.setHours(0, 0, 0, 0);
           return appDate > today;
         })
-        .sort(sortByPaymentStatus)
+        .sort(sortByDate)
     };
   };
 
@@ -306,21 +301,21 @@ export default function Invoices() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[200px]">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[300px]">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[120px]">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[150px]">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[170px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {groupAppointments(appointments).today.map((appointment) => (
                     <tr key={appointment.id}>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[200px]">
                         <div className="font-medium">{appointment.client_name}</div>
                         <div className="text-sm text-gray-500">{appointment.client_email}</div>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
                           {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
@@ -334,10 +329,10 @@ export default function Invoices() {
                           {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                         </div>
                       </td>
-                      <td className="py-4 px-4 font-medium">
+                      <td className="py-4 px-4 font-medium w-[120px]">
                         {formatCurrency(appointment.price)}
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[150px]">
                         <span className={`px-2 py-1 rounded-full text-xs
                           ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
                             appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
@@ -348,7 +343,7 @@ export default function Invoices() {
                            'Payment pending'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
                           <Button 
                             size="sm"
@@ -404,21 +399,21 @@ export default function Invoices() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[200px]">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[300px]">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[120px]">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[150px]">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[170px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {groupAppointments(appointments).recent.map((appointment) => (
                     <tr key={appointment.id}>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[200px]">
                         <div className="font-medium">{appointment.client_name}</div>
                         <div className="text-sm text-gray-500">{appointment.client_email}</div>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
                           {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
@@ -432,10 +427,10 @@ export default function Invoices() {
                           {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                         </div>
                       </td>
-                      <td className="py-4 px-4 font-medium">
+                      <td className="py-4 px-4 font-medium w-[120px]">
                         {formatCurrency(appointment.price)}
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[150px]">
                         <span className={`px-2 py-1 rounded-full text-xs
                           ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
                             appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
@@ -446,7 +441,7 @@ export default function Invoices() {
                            'Payment pending'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
                           <Button 
                             size="sm"
@@ -502,21 +497,21 @@ export default function Invoices() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Session Details</th>
-                    <th className="py-4 px-4 text-left font-medium text-gray-500">Price</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Status</th>
-                    <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[200px]">Client</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[300px]">Session Details</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-500 w-[120px]">Price</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[150px]">Status</th>
+                    <th className="py-4 px-4 text-right font-medium text-gray-500 w-[170px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {groupAppointments(appointments).upcoming.map((appointment) => (
                     <tr key={appointment.id}>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[200px]">
                         <div className="font-medium">{appointment.client_name}</div>
                         <div className="text-sm text-gray-500">{appointment.client_email}</div>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="h-4 w-4" />
                           {format(new Date(appointment.session_date), "MMM d, yyyy")} · {format(new Date(appointment.session_date), "p")} · {appointment.session_length} mins
@@ -530,10 +525,10 @@ export default function Invoices() {
                           {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
                         </div>
                       </td>
-                      <td className="py-4 px-4 font-medium">
+                      <td className="py-4 px-4 font-medium w-[120px]">
                         {formatCurrency(appointment.price)}
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[150px]">
                         <span className={`px-2 py-1 rounded-full text-xs
                           ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
                             appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
@@ -544,7 +539,7 @@ export default function Invoices() {
                            'Payment pending'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
                           <Button 
                             size="sm"

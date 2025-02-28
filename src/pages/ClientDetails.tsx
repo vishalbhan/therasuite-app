@@ -282,12 +282,12 @@ export default function ClientDetails() {
               </div>
             )}
 
-            {/* Upcoming Appointments */}
-            {categorizeAppointments(appointments).upcoming.length > 0 && (
+            {/* Recent Appointments - Moved before Upcoming */}
+            {categorizeAppointments(appointments).recent.length > 0 && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Upcoming</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Recent</h3>
                 <div className="space-y-4">
-                  {categorizeAppointments(appointments).upcoming.map((appointment) => (
+                  {categorizeAppointments(appointments).recent.map((appointment) => (
                     <AppointmentCard
                       key={appointment.id}
                       appointment={appointment}
@@ -301,12 +301,12 @@ export default function ClientDetails() {
               </div>
             )}
 
-            {/* Recent Appointments */}
-            {categorizeAppointments(appointments).recent.length > 0 && (
+            {/* Upcoming Appointments - Moved after Recent */}
+            {categorizeAppointments(appointments).upcoming.length > 0 && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Recent</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Upcoming</h3>
                 <div className="space-y-4">
-                  {categorizeAppointments(appointments).recent.map((appointment) => (
+                  {categorizeAppointments(appointments).upcoming.map((appointment) => (
                     <AppointmentCard
                       key={appointment.id}
                       appointment={appointment}
