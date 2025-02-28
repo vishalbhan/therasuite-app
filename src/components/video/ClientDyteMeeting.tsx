@@ -18,16 +18,29 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
         setLoading(true);
         setError(null);
 
-        // Get the meeting details from the appointments table
-        const { data: appointment, error: appointmentError } = await supabase
+        // First check if we get any results at all
+        const { data: appointments, error: queryError } = await supabase
           .from('appointments')
           .select('video_meeting_id, video_client_token')
-          .eq('id', appointmentId)
-          .single();
+          .eq('id', appointmentId);
 
-        if (appointmentError) throw appointmentError;
+        if (queryError) throw queryError;
+        
+        // Check if we got any results
+        if (!appointments || appointments.length === 0) {
+          throw new Error('Appointment not found');
+        }
+
+        // Check if we got multiple results (shouldn't happen, but let's handle it)
+        if (appointments.length > 1) {
+          throw new Error('Multiple appointments found with the same ID');
+        }
+
+        const appointment = appointments[0];
+
+        // Check for missing video meeting details
         if (!appointment.video_meeting_id || !appointment.video_client_token) {
-          throw new Error('Video meeting not found');
+          throw new Error('Video meeting details not found');
         }
 
         // Initialize Dyte client with the stored client token
@@ -42,7 +55,7 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
         setMeeting(dyteClient);
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
-        setError(error.message);
+        setError(error.message || 'An unexpected error occurred');
       } finally {
         setLoading(false);
       }

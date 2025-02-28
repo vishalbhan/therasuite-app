@@ -124,7 +124,7 @@ serve(async (req) => {
                 }
               </ul>
               ${data.session_type === 'video' ? 
-                '<p><em>You will receive a video call link before the appointment.</em></p>' 
+                '<p><em>You will receive a video call link at the time of the appointment.</em></p>' 
                 : ''
               }
             </div>

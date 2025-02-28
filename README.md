@@ -9,8 +9,6 @@ Future Plans:
   - Ability to add images, like prescriptions or forms
 
 - FEATURE In-Person:
-  - Add In-person appointments
-  - Therapist needs to have a location set in Settings
   - Map to location / Send reminder & location to Client
 
 - FIX Invoices - Add a modal to confirm because the invoice can only be sent once, the modal should only show the first time the user is sending an Invoice in the app
@@ -22,3 +20,9 @@ Future Plans:
   - Create appointments
   - Ask about schedule
   - Send invoices
+
+- FEATURE: Video Service Preference
+  - Allow the therapist to select their preferred video service
+  - Google Meet / Zoom / TheraSuite Video Call
+  - Default to TheraSuite Video Call
+  - If Google Meet or Zoom is selected, add a field to ask for the meeting ID
