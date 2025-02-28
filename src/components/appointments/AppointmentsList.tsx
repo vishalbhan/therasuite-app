@@ -107,6 +107,7 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
     appointmentId: string;
     notes: string;
   } | null>(null);
+  const [startingCall, setStartingCall] = useState<string | null>(null);
 
   useEffect(() => {
     checkAndUpdateExpiredAppointments(appointments);
@@ -173,6 +174,8 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
 
   const handleStartVideoCall = async (appointmentId: string) => {
     try {
+      setStartingCall(appointmentId);
+
       // Get the appointment details including the client info and video tokens
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -230,6 +233,8 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setStartingCall(null);
     }
   };
 
@@ -323,9 +328,19 @@ export function AppointmentsList({ appointments, selectedDate, loading = false }
                   <Button 
                     onClick={() => handleStartVideoCall(appointment.id)}
                     className="bg-green-600 hover:bg-green-700"
+                    disabled={startingCall === appointment.id}
                   >
-                    <Video className="h-4 w-4 mr-1" />
-                    Start Video Call
+                    {startingCall === appointment.id ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs mr-2" />
+                        Starting call...
+                      </>
+                    ) : (
+                      <>
+                        <Video className="h-4 w-4 mr-1" />
+                        Start Video Call
+                      </>
+                    )}
                   </Button>
                 </div>
               )}
