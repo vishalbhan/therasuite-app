@@ -18,14 +18,6 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
         setLoading(true);
         setError(null);
 
-        // Check authentication status
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        console.log('Auth status:', { session, authError }); // Debug log
-        
-        if (!session) {
-          throw new Error('Not authenticated - please log in');
-        }
-
         console.log('Attempting to fetch appointment:', appointmentId);
 
         // First check if we get any results at all
