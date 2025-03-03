@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { startOfDay, endOfDay, isToday, startOfWeek, endOfWeek } from "date-fns";
+import { 
+  startOfDay, endOfDay, isToday, startOfWeek, endOfWeek, isSameDay, 
+  startOfMonth, endOfMonth, getMonth, getYear 
+} from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AppointmentsList } from "@/components/appointments/AppointmentsList";
@@ -29,6 +32,8 @@ export default function Dashboard() {
     const savedView = localStorage.getItem('dashboard_view');
     return savedView ? savedView === 'week' : true;
   });
+  const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
   useEffect(() => {
     localStorage.setItem('dashboard_view', isWeekView ? 'week' : 'day');
@@ -60,9 +65,35 @@ export default function Dashboard() {
     }
   };
 
+  const fetchCalendarAppointments = async (month: Date) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const start = startOfMonth(month);
+      const end = endOfMonth(month);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('therapist_id', user.id)
+        .gte('session_date', start.toISOString())
+        .lte('session_date', end.toISOString());
+
+      if (error) throw error;
+      setCalendarAppointments(data || []);
+    } catch (error: any) {
+      console.error("Error fetching calendar appointments:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAppointments();
   }, [selectedDate, isWeekView]);
+
+  useEffect(() => {
+    fetchCalendarAppointments(calendarMonth);
+  }, [calendarMonth]);
 
   const handleAppointmentCreated = () => {
     fetchAppointments();
@@ -83,6 +114,19 @@ export default function Dashboard() {
     setIsWeekView(!isWeekView);
   };
 
+  const hasAppointmentsOnDate = (date: Date) => {
+    return calendarAppointments.some(appointment => 
+      isSameDay(new Date(appointment.session_date), date)
+    );
+  };
+
+  const handleCalendarMonthChange = (month: Date) => {
+    if (getMonth(month) !== getMonth(calendarMonth) || 
+        getYear(month) !== getYear(calendarMonth)) {
+      setCalendarMonth(month);
+    }
+  };
+
   if (loading && appointments.length === 0) {
     return <LoadingScreen />;
   }
@@ -94,14 +138,27 @@ export default function Dashboard() {
           mode="single"
           selected={selectedDate}
           onSelect={handleDateSelect}
+          onMonthChange={handleCalendarMonthChange}
           className="rounded-md border"
-          modifiers={{ today: (date) => isToday(date) }}
+          modifiers={{ 
+            today: (date) => isToday(date),
+            hasAppointments: (date) => hasAppointmentsOnDate(date)
+          }}
           modifiersStyles={{
+            hasAppointments: {
+              fontWeight: 'bold',
+              borderRadius: '50%'
+            },
+            selected: {
+              backgroundColor: '#7c3aed', // Primary purple color
+              color: 'white !important',
+              borderRadius: '50%'
+            },
             today: {
               fontWeight: 'bold',
               border: '2px solid #7c3aed',
-              borderRadius: '0.5rem'
-            }
+              borderRadius: '50%'
+            },
           }}
         />
         
