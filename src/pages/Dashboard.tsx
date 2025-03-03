@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { addWeeks, subWeeks } from "date-fns";
 
 type Appointment = {
   id: string;
@@ -24,7 +25,14 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isWeekView, setIsWeekView] = useState(true);
+  const [isWeekView, setIsWeekView] = useState(() => {
+    const savedView = localStorage.getItem('dashboard_view');
+    return savedView ? savedView === 'week' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dashboard_view', isWeekView ? 'week' : 'day');
+  }, [isWeekView]);
 
   const fetchAppointments = async () => {
     setLoading(true);
@@ -67,6 +75,14 @@ export default function Dashboard() {
     }
   };
 
+  const handleDateChange = (newDate: Date) => {
+    setSelectedDate(newDate);
+  };
+
+  const toggleView = () => {
+    setIsWeekView(!isWeekView);
+  };
+
   if (loading && appointments.length === 0) {
     return <LoadingScreen />;
   }
@@ -92,9 +108,7 @@ export default function Dashboard() {
         <Button
           variant="outline"
           className="w-full mt-4"
-          onClick={() => {
-            setIsWeekView(!isWeekView);
-          }}
+          onClick={toggleView}
         >
           Show {isWeekView ? "Daily" : "Weekly"} View
         </Button>
@@ -106,6 +120,7 @@ export default function Dashboard() {
           selectedDate={selectedDate}
           isWeekView={isWeekView}
           onUpdate={fetchAppointments}
+          onDateChange={handleDateChange}
           renderNotes={(notes) => notes && (
             <div className="mt-2 flex items-center gap-2">
               <Eye className="h-4 w-4 text-blue-500" />
