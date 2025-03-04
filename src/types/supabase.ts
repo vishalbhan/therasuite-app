@@ -81,4 +81,6 @@ export type Appointment = {
   price: number;
   notes?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'expired';
+  video_provider?: 'therasuite' | 'google_meet' | 'zoom' | null;
+  custom_meeting_link?: string | null;
 }; 

@@ -13,14 +13,23 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { addWeeks, subWeeks } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
-type Appointment = {
+// Define a more complete Appointment type that matches your database schema
+export type Appointment = {
   id: string;
+  therapist_id: string;
+  client_id?: string;
+  client_name?: string;
+  client_email?: string;
   session_date: string;
   session_length: number;
   session_type: 'video' | 'in-person';
   status: 'scheduled' | 'completed' | 'cancelled';
   notes?: string | null;
+  price?: number;
+  created_at?: string;
 };
 
 export default function Dashboard() {
@@ -48,6 +57,7 @@ export default function Dashboard() {
       const start = isWeekView ? startOfWeek(selectedDate) : startOfDay(selectedDate);
       const end = isWeekView ? endOfWeek(selectedDate) : endOfDay(selectedDate);
 
+      // Use type assertion to tell TypeScript that the result will be Appointment[]
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
@@ -57,7 +67,8 @@ export default function Dashboard() {
         .order('session_date', { ascending: true });
 
       if (error) throw error;
-      setAppointments(data || []);
+      // Use type assertion to ensure TypeScript knows this is an Appointment[]
+      setAppointments((data || []) as Appointment[]);
     } catch (error: any) {
       toast.error("Error fetching appointments");
     } finally {
@@ -73,6 +84,7 @@ export default function Dashboard() {
       const start = startOfMonth(month);
       const end = endOfMonth(month);
 
+      // Use type assertion for the calendar appointments as well
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
@@ -81,7 +93,8 @@ export default function Dashboard() {
         .lte('session_date', end.toISOString());
 
       if (error) throw error;
-      setCalendarAppointments(data || []);
+      // Use type assertion to ensure TypeScript knows this is an Appointment[]
+      setCalendarAppointments((data || []) as Appointment[]);
     } catch (error: any) {
       console.error("Error fetching calendar appointments:", error);
     }

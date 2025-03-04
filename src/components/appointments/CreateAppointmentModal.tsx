@@ -71,6 +71,21 @@ const formSchema = z.object({
     required_error: "Please select a session type",
     invalid_type_error: "Please select either video call or in-person session",
   }),
+  video_provider: z.enum(["therasuite", "google_meet", "zoom"])
+    .nullable(),
+  custom_meeting_link: z.string()
+    .nullable()
+    .optional()
+    .refine((val) => {
+      if (val === '') return true;
+      if (!val) return true;
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Please enter a valid URL"),
   location: z.object({
     address: z.string(),
     city: z.string(),
@@ -110,7 +125,31 @@ const formSchema = z.object({
   },
   {
     message: "Number of sessions is required for recurring appointments",
-    path: ["number_of_sessions"], // This tells Zod which field has the error
+    path: ["number_of_sessions"],
+  }
+).refine(
+  (data) => {
+    // If session type is video, video_provider is required
+    if (data.session_type === 'video') {
+      return !!data.video_provider;
+    }
+    return true;
+  },
+  {
+    message: "Please select a video provider",
+    path: ["video_provider"],
+  }
+).refine(
+  (data) => {
+    // If session type is video and provider is external, custom link is required
+    if (data.session_type === 'video' && data.video_provider && data.video_provider !== 'therasuite') {
+      return !!data.custom_meeting_link && data.custom_meeting_link !== '';
+    }
+    return true;
+  },
+  {
+    message: "Meeting link is required for external video providers",
+    path: ["custom_meeting_link"],
   }
 );
 
@@ -169,6 +208,8 @@ export function CreateAppointmentModal({
       session_time: defaultDate ? format(new Date(defaultDate), "HH:mm") : "",
       session_length: "60",
       session_type: "video",
+      video_provider: "therasuite",
+      custom_meeting_link: null,
       location: {
         address: "",
         city: "",
@@ -339,7 +380,11 @@ export function CreateAppointmentModal({
           session_type: values.session_type,
           price: parseFloat(values.price),
           notes: values.notes,
-          status: 'scheduled'
+          status: 'scheduled',
+          video_provider: values.session_type === 'video' ? values.video_provider : null,
+          custom_meeting_link: values.session_type === 'video' && values.video_provider !== 'therasuite' 
+            ? values.custom_meeting_link 
+            : null,
         };
 
         // Create appointment
@@ -351,8 +396,8 @@ export function CreateAppointmentModal({
 
         if (appointmentError) throw appointmentError;
 
-        // If this is a video appointment, create the Dyte meeting
-        if (values.session_type === 'video') {
+        // Only create Dyte meeting if using TheraSuite video
+        if (values.session_type === 'video' && values.video_provider === 'therasuite') {
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/create-dyte-meeting`,
             {
@@ -381,6 +426,11 @@ export function CreateAppointmentModal({
             throw new Error(errorMessage);
           }
         }
+
+        // Update email sending to include the correct video link
+        const videoLink = values.video_provider === 'therasuite' 
+          ? `${window.location.origin}/client-video/${appointment.id}`
+          : values.custom_meeting_link;
 
         // Send confirmation email last
         try {
@@ -412,7 +462,8 @@ export function CreateAppointmentModal({
                 therapist_photo_url: therapist?.photo_url || '',
                 location: values.session_type === 'in_person' ? 
                   `${values.location.address}, ${values.location.city}, ${values.location.state} - ${values.location.postal_code}, ${values.location.country}` 
-                  : undefined
+                  : undefined,
+                video_link: videoLink,
               }
             })
           });
@@ -759,7 +810,7 @@ export function CreateAppointmentModal({
                 <FormItem>
                   <FormLabel>Session Type</FormLabel>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     {...field}
                   >
                     <option value="video">Video Call</option>
@@ -792,6 +843,61 @@ export function CreateAppointmentModal({
                   </FormItem>
                 )}
               />
+            )}
+
+            {form.watch('session_type') === 'video' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="video_provider"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Video Provider</FormLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        {...field}
+                        value={field.value || 'therasuite'}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Clear custom meeting link when switching to TheraSuite
+                          if (e.target.value === 'therasuite') {
+                            form.setValue('custom_meeting_link', null);
+                          }
+                        }}
+                      >
+                        <option value="therasuite">TheraSuite Video</option>
+                        <option value="google_meet">Google Meet</option>
+                        <option value="zoom">Zoom</option>
+                      </select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch('video_provider') !== 'therasuite' && (
+                  <FormField
+                    control={form.control}
+                    name="custom_meeting_link"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meeting Link</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="https://meet.google.com/... or https://zoom.us/..."
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              field.onChange(e.target.value || null);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
             )}
 
             <FormField

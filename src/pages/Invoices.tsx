@@ -381,6 +381,17 @@ export default function Invoices() {
                               'Mark as Paid'
                             )}
                           </Button>
+                        ) : appointment.payment_status === 'received' && appointment.payment_date ? (
+                          <div className="text-sm text-gray-500">
+                            <div>Received on</div>
+                            <div>{new Date(appointment.payment_date).toLocaleDateString()}</div>
+                            <div className="text-xs">
+                              {new Date(appointment.payment_date).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
                         ) : null}
                       </td>
                     </tr>
@@ -479,6 +490,17 @@ export default function Invoices() {
                               'Mark as Paid'
                             )}
                           </Button>
+                        ) : appointment.payment_status === 'received' && appointment.payment_date ? (
+                          <div className="text-sm text-gray-500">
+                            <div>Received on</div>
+                            <div>{new Date(appointment.payment_date).toLocaleDateString()}</div>
+                            <div className="text-xs">
+                              {new Date(appointment.payment_date).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
                         ) : null}
                       </td>
                     </tr>
@@ -577,6 +599,17 @@ export default function Invoices() {
                               'Mark as Paid'
                             )}
                           </Button>
+                        ) : appointment.payment_status === 'received' && appointment.payment_date ? (
+                          <div className="text-sm text-gray-500">
+                            <div>Received on</div>
+                            <div>{new Date(appointment.payment_date).toLocaleDateString()}</div>
+                            <div className="text-xs">
+                              {new Date(appointment.payment_date).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
                         ) : null}
                       </td>
                     </tr>

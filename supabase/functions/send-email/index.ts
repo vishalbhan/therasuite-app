@@ -124,7 +124,10 @@ serve(async (req) => {
                 }
               </ul>
               ${data.session_type === 'video' ? 
-                '<p><em>You will receive a video call link at the time of the appointment.</em></p>' 
+                `<p><em>${data.video_provider === 'therasuite' ? 
+                  'You will receive a video call link at the time of the appointment.' :
+                  `This session will be conducted via ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}. The link will be shared before the session.`
+                }</em></p>` 
                 : ''
               }
             </div>
@@ -188,8 +191,13 @@ serve(async (req) => {
 
             <div class="details-box">
               <h2>Video Session Details</h2>
-              <p>Your therapist has started the video session. Please click the button below to join:</p>
-              <a href="${data.video_link}" class="button" style="color: #ffffff !important;">Join Video Session</a>
+              ${data.video_provider === 'therasuite' ? `
+                <p>Your therapist has started the video session. Please click the button below to join:</p>
+                <a href="${data.video_link}" class="button" style="color: #ffffff !important;">Join TheraSuite Video</a>
+              ` : `
+                <p>Your therapist has started the ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'} session. Please click the button below to join:</p>
+                <a href="${data.video_link}" class="button" style="color: #ffffff !important;">Join ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}</a>
+              `}
               <p>If you have any issues joining, please contact your therapist.</p>
             </div>
 

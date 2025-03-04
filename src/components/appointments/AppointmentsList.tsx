@@ -28,6 +28,8 @@ interface Appointment {
   price: number;
   client_email: string;
   notes?: string;
+  video_provider: string;
+  custom_meeting_link: string;
 }
 
 interface AppointmentsListProps {
@@ -185,26 +187,89 @@ export function AppointmentsList({
     return isWithinInterval(now, { start: startTime, end: endTime });
   };
 
-  const handleStartVideoCall = async (appointmentId: string) => {
+  const handleStartVideoCall = async (appointment: Appointment) => {
     try {
-      setStartingCall(appointmentId);
+      setStartingCall(appointment.id);
 
-      // Get the appointment details including the client info and video tokens
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('id', appointmentId)
-        .single();
+      if (appointment.video_provider !== 'therasuite') {
+        // For external providers, open the link in a new window and send email
+        window.open(appointment.custom_meeting_link, '_blank');
 
-      if (appointmentError) throw appointmentError;
+        // Send email to client with the video link
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
 
-      // Generate the client's video call link
-      const clientVideoLink = `${window.location.origin}/client-video/${appointmentId}`;
+        const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            type: 'video_call_link',
+            data: {
+              client_name: appointment.client_name,
+              client_email: appointment.client_email,
+              session_date: appointment.session_date,
+              video_link: appointment.custom_meeting_link,
+              video_provider: appointment.video_provider
+            }
+          })
+        });
 
-      // Send email to client with the video link
+        if (!emailResponse.ok) {
+          const error = await emailResponse.json();
+          console.error('Email error:', error);
+          toast({
+            title: "Warning",
+            description: "Started video call but failed to send link to client",
+            variant: "warning",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Video call link sent to client",
+          });
+        }
+        return;
+      }
+
+      // Create Dyte meeting for TheraSuite video
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
 
+      // Create the Dyte meeting
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/create-dyte-meeting`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
+          body: JSON.stringify({
+            appointmentId: appointment.id,
+            therapistId: appointment.therapist_id,
+            clientEmail: appointment.client_email,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to create meeting';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.details || errorMessage;
+        } catch (e) {
+          console.error('Error parsing response:', e);
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Generate client video link and send email
+      const clientVideoLink = `${window.location.origin}/client-video/${appointment.id}`;
+      
       const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
         method: 'POST',
         headers: {
@@ -217,7 +282,8 @@ export function AppointmentsList({
             client_name: appointment.client_name,
             client_email: appointment.client_email,
             session_date: appointment.session_date,
-            video_link: clientVideoLink
+            video_link: clientVideoLink,
+            video_provider: 'therasuite'
           }
         })
       });
@@ -237,8 +303,8 @@ export function AppointmentsList({
         });
       }
 
-      // Navigate to the therapist's video call page
-      navigate(`/video/${appointmentId}`);
+      // Navigate to the therapist's video call page only for TheraSuite video
+      navigate(`/video/${appointment.id}`);
     } catch (error: any) {
       console.error('Error starting video call:', error);
       toast({
@@ -287,7 +353,7 @@ export function AppointmentsList({
             </span>
           </Button>
           
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />
             {isWeekView 
               ? `Week of ${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMMM d")} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "MMMM d, yyyy")}`
@@ -322,147 +388,149 @@ export function AppointmentsList({
       ) : (
         <div className="space-y-4">
           {isWeekView ? (
-            Array.from({ length: 7 }, (_, i) => {
-              const day = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), i);
-              const dayAppointments = appointments.filter(apt => 
-                isSameDay(new Date(apt.session_date), day)
-              ).sort((a, b) => 
-                compareAsc(new Date(a.session_date), new Date(b.session_date))
-              );
-              
-              return (
-                <div key={format(day, 'yyyy-MM-dd')} className="space-y-4">
-                  <div className="border-b pb-2 mb-4">
-                    <h3 className="font-semibold text-lg text-gray-900">
-                      {format(day, 'EEEE, MMMM d', { locale: enUS })}
-                    </h3>
-                  </div>
-                  {dayAppointments.length === 0 ? (
-                    <p className="text-muted-foreground text-sm py-2 text-gray-400 italic">
-                      No appointments scheduled
-                    </p>
-                  ) : (
-                    dayAppointments.map(appointment => (
-                      <div
-                        key={appointment.id}
-                        className="border rounded-lg p-4 hover:shadow transition-shadow"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-lg">
-                              {appointment.client_name}
-                            </h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <Clock className="h-4 w-4" />
-                              {formatTimeRange(appointment.session_date, appointment.session_length)} · {appointment.session_length} mins
+            <div className="space-y-10">
+              {Array.from({ length: 7 }, (_, i) => {
+                const day = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), i);
+                const dayAppointments = appointments.filter(apt => 
+                  isSameDay(new Date(apt.session_date), day)
+                ).sort((a, b) => 
+                  compareAsc(new Date(a.session_date), new Date(b.session_date))
+                );
+                
+                return (
+                  <div key={format(day, 'yyyy-MM-dd')} className="space-y-4">
+                    <div className="border-b pb-2 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-500">
+                        {format(day, 'EEEE, MMMM d', { locale: enUS })}
+                      </h3>
+                    </div>
+                    {dayAppointments.length === 0 ? (
+                      <p className="text-muted-foreground text-sm text-center py-8 text-gray-400 italic">
+                        No appointments scheduled
+                      </p>
+                    ) : (
+                      dayAppointments.map(appointment => (
+                        <div
+                          key={appointment.id}
+                          className="border rounded-lg p-4 hover:shadow transition-shadow"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                {appointment.client_name}
+                              </h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                <Clock className="h-4 w-4" />
+                                {formatTimeRange(appointment.session_date, appointment.session_length)} · {appointment.session_length} mins
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                {appointment.session_type === 'video' ? (
+                                  <Video className="h-4 w-4" />
+                                ) : (
+                                  <MapPin className="h-4 w-4" />
+                                )}
+                                {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                {formatCurrency(appointment.price || 0)}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              {appointment.session_type === 'video' ? (
-                                <Video className="h-4 w-4" />
-                              ) : (
-                                <MapPin className="h-4 w-4" />
+                            <div className="flex items-center gap-2">
+                              <div className={`px-2 py-1 rounded-full text-xs capitalize
+                                ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
+                                ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+                                ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
+                                ${appointment.status === 'expired' ? 'bg-gray-100 text-gray-700' : ''}
+                              `}>
+                                {appointment.status}
+                              </div>
+                              {appointment.status === 'scheduled' && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEdit(appointment)}>
+                                      <CalendarPlus className="h-4 w-4 mr-2" />
+                                      Reschedule
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => navigate(`/clients/${appointment.client_id}`)}
+                                      className="text-blue-600"
+                                    >
+                                      <History className="h-4 w-4 mr-2" />
+                                      View Client History
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleCancelClick(appointment)}
+                                      className="text-red-600"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Cancel
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
-                              {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              {formatCurrency(appointment.price || 0)}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className={`px-2 py-1 rounded-full text-xs capitalize
-                              ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
-                              ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
-                              ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
-                              ${appointment.status === 'expired' ? 'bg-gray-100 text-gray-700' : ''}
-                            `}>
-                              {appointment.status}
-                            </div>
-                            {appointment.status === 'scheduled' && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEdit(appointment)}>
-                                    <CalendarPlus className="h-4 w-4 mr-2" />
-                                    Reschedule
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => navigate(`/clients/${appointment.client_id}`)}
-                                    className="text-blue-600"
-                                  >
-                                    <History className="h-4 w-4 mr-2" />
-                                    View Client History
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleCancelClick(appointment)}
-                                    className="text-red-600"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Cancel
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </div>
-                        </div>
-                        {appointment.session_type === 'video' && 
-                         appointment.status === 'scheduled' && 
-                         isAppointmentActive(appointment) && (
-                          <div className="flex justify-end mt-4">
-                            <Button 
-                              onClick={() => handleStartVideoCall(appointment.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                              disabled={startingCall === appointment.id}
-                            >
-                              {startingCall === appointment.id ? (
-                                <>
-                                  <span className="loading loading-spinner loading-xs mr-2" />
-                                  Starting call...
-                                </>
-                              ) : (
-                                <>
-                                  <Video className="h-4 w-4 mr-1" />
-                                  Start Video Call
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                        {appointment.notes && (
-                          <div className="mt-4">
-                            <div className="flex items-center justify-between gap-4">
-                              {renderNotes && (
-                                <div className="flex-1">
-                                  {renderNotes(appointment.notes)}
-                                </div>
-                              )}
-                              
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingNotes({
-                                    appointmentId: appointment.id,
-                                    notes: appointment.notes
-                                  });
-                                }}
+                          {appointment.session_type === 'video' && 
+                           appointment.status === 'scheduled' && 
+                           isAppointmentActive(appointment) && (
+                            <div className="flex justify-end mt-4">
+                              <Button 
+                                onClick={() => handleStartVideoCall(appointment)}
+                                className="bg-green-600 hover:bg-green-700"
+                                disabled={startingCall === appointment.id}
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Edit Notes
+                                {startingCall === appointment.id ? (
+                                  <>
+                                    <span className="loading loading-spinner loading-xs mr-2" />
+                                    Starting call...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Video className="h-4 w-4 mr-1" />
+                                    Start Video Call
+                                  </>
+                                )}
                               </Button>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              );
-            })
+                          )}
+                          {appointment.notes && (
+                            <div className="mt-4">
+                              <div className="flex items-center justify-between gap-4">
+                                {renderNotes && (
+                                  <div className="flex-1">
+                                    {renderNotes(appointment.notes)}
+                                  </div>
+                                )}
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingNotes({
+                                      appointmentId: appointment.id,
+                                      notes: appointment.notes
+                                    });
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Edit Notes
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             appointments.map((appointment) => (
             <div
@@ -535,7 +603,7 @@ export function AppointmentsList({
                isAppointmentActive(appointment) && (
                 <div className="flex justify-end mt-4">
                   <Button 
-                    onClick={() => handleStartVideoCall(appointment.id)}
+                    onClick={() => handleStartVideoCall(appointment)}
                     className="bg-green-600 hover:bg-green-700"
                     disabled={startingCall === appointment.id}
                   >
