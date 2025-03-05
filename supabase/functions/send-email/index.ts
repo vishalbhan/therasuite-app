@@ -92,6 +92,23 @@ serve(async (req) => {
 
     switch (type) {
       case 'appointment_confirmation':
+        // Create Google Calendar URL
+        const encodeForCalendar = (text: string) => encodeURIComponent(text.replace(/\n/g, ' '));
+        const startDate = new Date(data.session_date);
+        const endDate = new Date(startDate.getTime() + data.session_length * 60000);
+        
+        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${
+          encodeForCalendar(`Therapy Session with ${data.therapist_name}`)
+        }&dates=${
+          startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '')
+        }/${
+          endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '')
+        }&details=${
+          encodeForCalendar(`Your therapy session with ${data.therapist_name}`)
+        }&location=${
+          data.location ? encodeForCalendar(data.location) : ''
+        }`;
+
         await resend.emails.send({
           from: 'appointments@therasuite.app',
           to: data.client_email,
@@ -128,7 +145,7 @@ serve(async (req) => {
                   'You will receive a video call link at the time of the appointment.' :
                   `This session will be conducted via ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}. The link will be shared before the session.`
                 }</em></p>` 
-                : ''
+                : `<p><a href="${calendarUrl}" target="_blank" class="button">Add to Google Calendar</a></p>`
               }
             </div>
 
