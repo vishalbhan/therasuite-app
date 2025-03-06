@@ -181,6 +181,64 @@ type LocationData = {
   postal_code: string;
 };
 
+// Add proper type definitions for database tables
+interface DatabaseTables {
+  clients: {
+    Row: any;
+    Insert: {
+      therapist_id: string;
+      name: string;
+      email: string;
+      avatar_color: string;
+      initials: string;
+      [key: string]: any;
+    };
+    Update: any;
+  };
+  appointments: {
+    Row: any;
+    Insert: {
+      therapist_id: string;
+      client_id: string;
+      client_name: string;
+      client_email: string;
+      session_date: string;
+      session_length: number;
+      session_type: "video" | "in_person";
+      price: number;
+      notes?: string;
+      status: "scheduled" | "completed" | "cancelled" | "expired";
+      video_provider: string | null;
+      custom_meeting_link: string | null;
+      [key: string]: any;
+    };
+    Update: any;
+  };
+  profiles: {
+    Row: {
+      id: string;
+      created_at?: string;
+      email?: string;
+      full_name?: string;
+      photo_url?: string;
+      location?: LocationData | string;
+      [key: string]: any;
+    };
+    Insert: any;
+    Update: any;
+  };
+}
+
+// Update the Database type
+type Database = {
+  public: {
+    Tables: DatabaseTables;
+    Views: {};
+    Functions: {};
+    Enums: {};
+  };
+};
+
 export function CreateAppointmentModal({
   open,
   onOpenChange,
@@ -249,7 +307,7 @@ export function CreateAppointmentModal({
         return;
       }
 
-      setExistingClients(clients);
+      setExistingClients(clients || []);
     };
 
     fetchClients();
@@ -263,11 +321,16 @@ export function CreateAppointmentModal({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: therapist } = await supabase
+        const { data: therapist, error } = await supabase
           .from('profiles')
           .select('location')
           .eq('id', user.id)
           .single();
+
+        if (error) {
+          console.error('Error fetching therapist profile:', error);
+          return;
+        }
 
         if (therapist?.location) {
           try {
@@ -378,7 +441,7 @@ export function CreateAppointmentModal({
           session_date: session_date.toISOString(),
           session_length: parseInt(values.session_length),
           session_type: values.session_type,
-          price: parseFloat(values.price),
+          price: values.price,
           notes: values.notes,
           status: 'scheduled',
           video_provider: values.session_type === 'video' ? values.video_provider : null,
@@ -438,11 +501,15 @@ export function CreateAppointmentModal({
           if (!session) throw new Error('No active session');
 
           // Get therapist details
-          const { data: therapist } = await supabase
+          const { data: therapist, error: therapistError } = await supabase
             .from('profiles')
             .select('full_name, photo_url')
             .eq('id', user.id)
             .single();
+
+          if (therapistError) {
+            console.error('Error fetching therapist details:', therapistError);
+          }
 
           const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
             method: 'POST',
@@ -532,6 +599,20 @@ export function CreateAppointmentModal({
     const minute = (i % 4) * 15;
     return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
   });
+
+  // Update the useEffect that watches is_recurring to also handle video provider
+  useEffect(() => {
+    if (form.watch('is_recurring')) {
+      const selectedDate = form.watch('session_date');
+      if (selectedDate) {
+        const dayOfWeek = selectedDate.getDay();
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        form.setValue('recurring_day', days[dayOfWeek] as any);
+      }
+      // Force video provider to TheraSuite when recurring is enabled
+      form.setValue('video_provider', 'therasuite');
+    }
+  }, [form.watch('session_date'), form.watch('is_recurring')]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -710,29 +791,6 @@ export function CreateAppointmentModal({
                   <>
                     <FormField
                       control={form.control}
-                      name="recurring_day"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Repeat Every</FormLabel>
-                          <select
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            {...field}
-                          >
-                            <option value="monday">Every Monday</option>
-                            <option value="tuesday">Every Tuesday</option>
-                            <option value="wednesday">Every Wednesday</option>
-                            <option value="thursday">Every Thursday</option>
-                            <option value="friday">Every Friday</option>
-                            <option value="saturday">Every Saturday</option>
-                            <option value="sunday">Every Sunday</option>
-                          </select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
                       name="number_of_sessions"
                       render={({ field }) => (
                         <FormItem>
@@ -797,6 +855,29 @@ export function CreateAppointmentModal({
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="recurring_day"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Repeat Every</FormLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        {...field}
+                      >
+                        <option value="monday">Every Monday</option>
+                        <option value="tuesday">Every Tuesday</option>
+                        <option value="wednesday">Every Wednesday</option>
+                        <option value="thursday">Every Thursday</option>
+                        <option value="friday">Every Friday</option>
+                        <option value="saturday">Every Saturday</option>
+                        <option value="sunday">Every Sunday</option>
+                      </select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -886,11 +967,17 @@ export function CreateAppointmentModal({
                                 form.setValue('custom_meeting_link', null);
                               }
                             }}
+                            disabled={form.watch('is_recurring')} // Disable when recurring
                           >
                             <option value="therasuite">TheraSuite Video</option>
                             <option value="google_meet">Google Meet</option>
                             <option value="zoom">Zoom</option>
                           </select>
+                          {form.watch('is_recurring') && (
+                            <p className="text-xs text-slate-600 text-muted-foreground mt-1">
+                              Recurring appointments must use TheraSuite Video
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
