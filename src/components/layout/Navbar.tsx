@@ -30,6 +30,7 @@ const navItems = [
     label: "Schedule",
     icon: Calendar,
     href: "/schedule",
+    hideOnMobile: true,
   },
   {
     label: "Clients",
@@ -136,26 +137,28 @@ export function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden border-t py-2">
             <div className="space-y-1">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                      ${isActive 
-                        ? 'bg-violet-100 text-violet-900' 
-                        : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
-                      }`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {navItems
+                .filter(item => !item.hideOnMobile)
+                .map((item) => {
+                  const isActive = location.pathname === item.href;
+                  const Icon = item.icon;
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                        ${isActive 
+                          ? 'bg-violet-100 text-violet-900' 
+                          : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
+                        }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
             </div>
           </div>
         )}

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@media (max-width: 640px) {
+  html, :host {
+    font-size: 13px !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -71,31 +71,28 @@ function AppointmentSkeleton() {
   );
 }
 
-const checkAndUpdateExpiredAppointments = async (appointments: Appointment[]) => {
+const checkAndUpdateCompletedAppointments = async (appointments: Appointment[]) => {
   const now = new Date();
-  const expiredAppointments = appointments.filter(appointment => {
+  const completedAppointments = appointments.filter(appointment => {
     const appointmentDate = new Date(appointment.session_date);
+    const endTime = addMinutes(appointmentDate, appointment.session_length);
     return (
       appointment.status === 'scheduled' &&
-      appointmentDate < now &&
-      !isWithinInterval(now, {
-        start: appointmentDate,
-        end: addMinutes(appointmentDate, appointment.session_length)
-      })
+      endTime < now
     );
   });
 
-  if (expiredAppointments.length === 0) return;
+  if (completedAppointments.length === 0) return;
 
-  // Update expired appointments in the database
-  for (const appointment of expiredAppointments) {
+  // Update completed appointments in the database
+  for (const appointment of completedAppointments) {
     const { error } = await supabase
       .from('appointments')
-      .update({ status: 'expired' })
+      .update({ status: 'completed' })
       .eq('id', appointment.id);
 
     if (error) {
-      console.error('Error updating expired appointment:', error);
+      console.error('Error updating completed appointment:', error);
     }
   }
 
@@ -125,7 +122,7 @@ export function AppointmentsList({
   const [startingCall, setStartingCall] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAndUpdateExpiredAppointments(appointments);
+    checkAndUpdateCompletedAppointments(appointments);
   }, [appointments]);
 
   const formatTimeRange = (startTime: string, lengthInMinutes: number) => {
@@ -355,10 +352,11 @@ export function AppointmentsList({
           
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <CalendarIcon className="h-5 w-5" />
-            {isWeekView 
-              ? `Week of ${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMMM d")} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "MMMM d, yyyy")}`
-              : `Appointments for ${format(selectedDate, "MMMM d, yyyy")}`
-            }
+            {isWeekView ? (
+              `${format(startOfWeek(selectedDate), 'MMM d')} - ${format(endOfWeek(selectedDate), 'MMM d, yyyy')}`
+            ) : (
+              format(selectedDate, 'MMMM d, yyyy')
+            )}
           </h2>
           
           <Button 
@@ -440,11 +438,10 @@ export function AppointmentsList({
                                 ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
                                 ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
                                 ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
-                                ${appointment.status === 'expired' ? 'bg-gray-100 text-gray-700' : ''}
                               `}>
                                 {appointment.status}
                               </div>
-                              {appointment.status === 'scheduled' && (
+                              {(appointment.status === 'scheduled' || appointment.status === 'completed') && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -563,11 +560,10 @@ export function AppointmentsList({
                     ${appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : ''}
                     ${appointment.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
                     ${appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' : ''}
-                    ${appointment.status === 'expired' ? 'bg-gray-100 text-gray-700' : ''}
                   `}>
                     {appointment.status}
                   </div>
-                  {appointment.status === 'scheduled' && (
+                  {(appointment.status === 'scheduled' || appointment.status === 'completed') && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

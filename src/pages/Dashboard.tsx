@@ -145,73 +145,75 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="grid md:grid-cols-[300px,1fr] gap-8">
-      <div className="order-2 md:order-1 max-w-[300px] mx-auto mb-20">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleDateSelect}
-          onMonthChange={handleCalendarMonthChange}
-          className="rounded-md border"
-          modifiers={{ 
-            today: (date) => isToday(date),
-            hasAppointments: (date) => hasAppointmentsOnDate(date)
-          }}
-          modifiersStyles={{
-            hasAppointments: {
-              fontWeight: 'bold',
-              borderRadius: '50%'
-            },
-            selected: {
-              backgroundColor: '#7c3aed', // Primary purple color
-              color: 'white !important',
-              borderRadius: '50%'
-            },
-            today: {
-              fontWeight: 'bold',
-              border: '2px solid #7c3aed',
-              borderRadius: '50%'
-            },
-          }}
-        />
-        
-        <Button
-          variant="outline"
-          className="w-full mt-4"
-          onClick={toggleView}
-        >
-          Show {isWeekView ? "Daily" : "Weekly"} View
-        </Button>
-      </div>
+    <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
+      <div className="grid md:grid-cols-[300px,1fr] gap-8">
+        <div className="order-2 md:order-1 max-w-[300px] mx-auto mb-20">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleDateSelect}
+            onMonthChange={handleCalendarMonthChange}
+            className="rounded-md border"
+            modifiers={{ 
+              today: (date) => isToday(date),
+              hasAppointments: (date) => hasAppointmentsOnDate(date)
+            }}
+            modifiersStyles={{
+              hasAppointments: {
+                fontWeight: 'bold',
+                borderRadius: '50%'
+              },
+              selected: {
+                backgroundColor: '#7c3aed', // Primary purple color
+                color: 'white !important',
+                borderRadius: '50%'
+              },
+              today: {
+                fontWeight: 'bold',
+                border: '2px solid #7c3aed',
+                borderRadius: '50%'
+              },
+            }}
+          />
+          
+          <Button
+            variant="outline"
+            className="w-full mt-4"
+            onClick={toggleView}
+          >
+            Show {isWeekView ? "Daily" : "Weekly"} View
+          </Button>
+        </div>
 
-      <div className="order-1 md-order-2">
-        <AppointmentsList
-          appointments={appointments}
-          selectedDate={selectedDate}
-          isWeekView={isWeekView}
-          onUpdate={fetchAppointments}
-          onDateChange={handleDateChange}
-          renderNotes={(notes) => notes && (
-            <div className="mt-2 flex items-center gap-2">
-              <Eye className="h-4 w-4 text-blue-500" />
-              <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
-                {notes}
+        <div className="order-1 md-order-2">
+          <AppointmentsList
+            appointments={appointments}
+            selectedDate={selectedDate}
+            isWeekView={isWeekView}
+            onUpdate={fetchAppointments}
+            onDateChange={handleDateChange}
+            renderNotes={(notes) => notes && (
+              <div className="mt-2 flex items-center gap-2">
+                <Eye className="h-4 w-4 text-blue-500" />
+                <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
+                  {notes}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          />
+        </div>
+
+        <CreateAppointmentModal
+          open={searchParams.get("modal") === "create"}
+          onOpenChange={(open) => {
+            if (!open) {
+              searchParams.delete("modal");
+              setSearchParams(searchParams);
+            }
+          }}
+          onAppointmentCreated={handleAppointmentCreated}
         />
       </div>
-
-      <CreateAppointmentModal
-        open={searchParams.get("modal") === "create"}
-        onOpenChange={(open) => {
-          if (!open) {
-            searchParams.delete("modal");
-            setSearchParams(searchParams);
-          }
-        }}
-        onAppointmentCreated={handleAppointmentCreated}
-      />
     </div>
   );
 }

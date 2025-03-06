@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft, Eye, Save } from 'lucide-react';
+import { ChevronLeft, Eye, Save, Plus } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Textarea } from '@/components/ui/textarea';
@@ -173,7 +173,7 @@ export default function ClientDetails() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -197,14 +197,29 @@ export default function ClientDetails() {
           <p className="text-gray-500">{client.email}</p>
         </div>
         <div className="ml-auto">
+          {/* Desktop button */}
           <Button 
             onClick={() => {
               const params = new URLSearchParams(searchParams);
               params.set('modal', 'create');
               setSearchParams(params);
             }}
+            className="hidden sm:flex"
           >
             Create New Appointment
+          </Button>
+
+          {/* Mobile button */}
+          <Button
+            onClick={() => {
+              const params = new URLSearchParams(searchParams);
+              params.set('modal', 'create');
+              setSearchParams(params);
+            }}
+            size="icon"
+            className="sm:hidden"
+          >
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>

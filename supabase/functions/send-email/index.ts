@@ -92,7 +92,7 @@ serve(async (req) => {
 
     switch (type) {
       case 'appointment_confirmation':
-        // Create Calendar URLs
+        // Create Calendar URL
         const encodeForCalendar = (text: string) => encodeURIComponent(text.replace(/\n/g, ' '));
         const startDate = new Date(data.session_date);
         const endDate = new Date(startDate.getTime() + data.session_length * 60000);
@@ -108,24 +108,6 @@ serve(async (req) => {
         }&location=${
           data.location ? encodeForCalendar(data.location) : ''
         }`;
-
-        // Create ICS content for Apple Calendar
-        const formatDateForICS = (date: Date) => {
-          return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        };
-
-        const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-DTSTART:${formatDateForICS(startDate)}
-DTEND:${formatDateForICS(endDate)}
-SUMMARY:Therapy Session with ${data.therapist_name}
-DESCRIPTION:Your therapy session with ${data.therapist_name}
-${data.location ? `LOCATION:${data.location}` : ''}
-END:VEVENT
-END:VCALENDAR`;
-
-        const appleCalendarUrl = `data:text/calendar;charset=utf8,${encodeURIComponent(icsContent)}`;
 
         await resend.emails.send({
           from: 'appointments@therasuite.app',
@@ -164,8 +146,7 @@ END:VCALENDAR`;
                   `This session will be conducted via ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}. The link will be shared before the session.`
                 }</em></p>` 
                 : `<p style="text-align: center;">
-                    <a href="${googleCalendarUrl}" target="_blank" class="button" style="margin-right: 10px;">Add to Google Calendar</a>
-                    <a href="${appleCalendarUrl}" download="appointment.ics" class="button">Add to Apple Calendar</a>
+                    <a href="${googleCalendarUrl}" target="_blank" class="button">Add to Google Calendar</a>
                    </p>`
               }
             </div>

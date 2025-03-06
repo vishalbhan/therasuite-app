@@ -16,3 +16,4 @@
 .form-item [data-state="error"] {
   @apply border-red-400 focus:ring-red-400 !important;
 } 
+

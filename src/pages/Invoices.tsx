@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface Appointment {
@@ -17,6 +17,7 @@ interface Appointment {
   price: number;
   payment_status: 'pending' | 'invoice_sent' | 'received';
   payment_date?: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
 }
 
 export default function Invoices() {
@@ -62,6 +63,7 @@ export default function Invoices() {
           .from('appointments')
           .select('*')
           .eq('therapist_id', user.id)
+          .in('status', ['scheduled', 'completed'])
           .gte('session_date', startDate.toISOString())
           .lte('session_date', endDate.toISOString())
           .order('session_date', { ascending: false });
@@ -201,6 +203,10 @@ export default function Invoices() {
       return new Date(b.session_date).getTime() - new Date(a.session_date).getTime();
     };
 
+    const sortByDateAscending = (a: Appointment, b: Appointment) => {
+      return new Date(a.session_date).getTime() - new Date(b.session_date).getTime();
+    };
+
     return {
       today: appointments
         .filter(app => {
@@ -222,8 +228,90 @@ export default function Invoices() {
           appDate.setHours(0, 0, 0, 0);
           return appDate > today;
         })
-        .sort(sortByDate)
+        .sort(sortByDateAscending)
     };
+  };
+
+  const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
+    return (
+      <div className="bg-white rounded-lg border shadow-sm p-4 space-y-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="font-medium">{appointment.client_name}</div>
+            <div className="text-sm text-gray-500">{appointment.client_email}</div>
+          </div>
+          <div className={`px-2 py-1 rounded-full text-xs
+            ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
+              appointment.payment_status === 'invoice_sent' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-blue-100 text-blue-700'}
+          `}>
+            {appointment.payment_status === 'received' ? 'Payment received' :
+             appointment.payment_status === 'invoice_sent' ? 'Invoice sent' :
+             'Payment pending'}
+          </div>
+        </div>
+
+        <div className="flex items-center text-sm text-gray-500">
+          <Clock className="h-4 w-4 mr-2" />
+          {format(new Date(appointment.session_date), "MMM d, yyyy 'at' h:mm a")}
+        </div>
+
+        <div className="flex items-center text-sm text-gray-500">
+          {appointment.session_type === 'video' ? (
+            <Video className="h-4 w-4 mr-2" />
+          ) : (
+            <MapPin className="h-4 w-4 mr-2" />
+          )}
+          {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'} · {appointment.session_length} mins
+        </div>
+
+        <div className="flex items-center text-sm font-medium">
+          <Calendar className="h-4 w-4 mr-2" />
+          {formatCurrency(appointment.price)}
+        </div>
+
+        <div className="flex space-x-2 pt-3 border-t">
+          {appointment.payment_status === 'pending' ? (
+            <Button 
+              size="sm"
+              variant="outline"
+              className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+              onClick={() => handleSendInvoice(appointment)}
+              disabled={loadingInvoices[appointment.id]}
+            >
+              {loadingInvoices[appointment.id] ? (
+                <>
+                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-1.5" />
+                  Send Invoice
+                </>
+              )}
+            </Button>
+          ) : appointment.payment_status === 'invoice_sent' ? (
+            <Button 
+              size="sm"
+              variant="outline"
+              className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+              onClick={() => handleMarkAsPaid(appointment)}
+              disabled={loadingPayments[appointment.id]}
+            >
+              {loadingPayments[appointment.id] ? (
+                <>
+                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                  Updating...
+                </>
+              ) : (
+                'Mark as Paid'
+              )}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -231,7 +319,7 @@ export default function Invoices() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Invoices</h1>
         <div className="flex items-center bg-primary/5 rounded-lg p-1">
@@ -258,7 +346,8 @@ export default function Invoices() {
       </div>
       
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-        <div className="flex justify-between items-center">
+        {/* Desktop View */}
+        <div className="hidden md:flex justify-between items-center">
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-500">Monthly Total</span>
             <span className="text-3xl font-bold text-gray-900">
@@ -290,6 +379,38 @@ export default function Invoices() {
             </span>
           </div>
         </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden space-y-6">
+          <div className="flex flex-col items-center">
+            <span className="text-sm font-medium text-gray-500">Monthly Total</span>
+            <span className="text-3xl font-bold text-gray-900">
+              {formatCurrency(totalEarnings + pendingEarnings)}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center p-3 rounded-lg bg-green-50">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-sm font-medium text-gray-500">Received</span>
+              </div>
+              <span className="text-2xl font-bold text-green-600">
+                {formatCurrency(totalEarnings)}
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center p-3 rounded-lg bg-amber-50">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-sm font-medium text-gray-500">Pending</span>
+              </div>
+              <span className="text-2xl font-bold text-amber-600">
+                {formatCurrency(pendingEarnings)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -297,7 +418,8 @@ export default function Invoices() {
         {groupAppointments(appointments).today.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Today</h2>
-            <div className="rounded-md border">
+            {/* Desktop View */}
+            <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
@@ -399,14 +521,21 @@ export default function Invoices() {
                 </tbody>
               </table>
             </div>
+            {/* Mobile View */}
+            <div className="md:hidden space-y-4">
+              {groupAppointments(appointments).today.map((appointment) => (
+                <AppointmentCard key={appointment.id} appointment={appointment} />
+              ))}
+            </div>
           </div>
         )}
 
         {/* Recent Appointments */}
         {groupAppointments(appointments).recent.length > 0 && (
-          <div>
+          <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Recent</h2>
-            <div className="rounded-md border">
+            {/* Desktop View */}
+            <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
@@ -508,14 +637,21 @@ export default function Invoices() {
                 </tbody>
               </table>
             </div>
+            {/* Mobile View */}
+            <div className="md:hidden space-y-4">
+              {groupAppointments(appointments).recent.map((appointment) => (
+                <AppointmentCard key={appointment.id} appointment={appointment} />
+              ))}
+            </div>
           </div>
         )}
 
         {/* Upcoming Appointments */}
         {groupAppointments(appointments).upcoming.length > 0 && (
-          <div>
+          <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Upcoming</h2>
-            <div className="rounded-md border">
+            {/* Desktop View */}
+            <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
@@ -616,6 +752,12 @@ export default function Invoices() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            {/* Mobile View */}
+            <div className="md:hidden space-y-4">
+              {groupAppointments(appointments).upcoming.map((appointment) => (
+                <AppointmentCard key={appointment.id} appointment={appointment} />
+              ))}
             </div>
           </div>
         )}

@@ -98,9 +98,11 @@ export default function Clients() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
       <h1 className="text-2xl font-bold mb-6">Clients</h1>
-      <div className="rounded-md border">
+      
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
@@ -166,6 +168,64 @@ export default function Clients() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {clients.map((client) => (
+          <div 
+            key={client.id}
+            className="bg-white rounded-lg border shadow-sm p-4 space-y-4"
+            onClick={() => navigate(`/clients/${client.id}`)}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                style={{ backgroundColor: client.avatar_color }}
+              >
+                {client.initials}
+              </div>
+              <div>
+                <div className="font-medium">{client.name}</div>
+                <div className="text-sm text-gray-500">{client.email}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center text-sm text-gray-500">
+              <History className="h-4 w-4 mr-2" />
+              {client.last_appointment_date 
+                ? format(new Date(client.last_appointment_date), 'MMM d, yyyy')
+                : 'No appointments yet'}
+            </div>
+
+            <div className="flex space-x-2 pt-2 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCreateAppointment(client);
+                }}
+                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+              >
+                <Calendar className="h-4 w-4 mr-1.5" />
+                New Appointment
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/clients/${client.id}`);
+                }}
+                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+              >
+                <History className="h-4 w-4 mr-1.5" />
+                View History
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
 
       <CreateAppointmentModal
