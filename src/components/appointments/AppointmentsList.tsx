@@ -30,6 +30,9 @@ interface Appointment {
   notes?: string;
   video_provider: string;
   custom_meeting_link: string;
+  location?: string;
+  therapist_name: string;
+  therapist_photo_url?: string;
 }
 
 interface AppointmentsListProps {
@@ -152,11 +155,31 @@ export function AppointmentsList({
 
       if (error) throw error;
 
-      // Send cancellation email
+      // Get therapist details
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No active session');
+
+      const { data: therapist, error: therapistError } = await supabase
+        .from('profiles')
+        .select('full_name, photo_url')
+        .eq('id', user.id)
+        .single();
+
+      if (therapistError) {
+        console.error('Error fetching therapist details:', therapistError);
+        throw new Error('Failed to fetch therapist details');
+      }
+
+      // Send cancellation email with enhanced data
       await emailService.sendAppointmentCancellation({
         client_name: appointmentToCancel.client_name,
         client_email: appointmentToCancel.client_email,
-        session_date: appointmentToCancel.session_date
+        session_date: appointmentToCancel.session_date,
+        session_length: appointmentToCancel.session_length,
+        session_type: appointmentToCancel.session_type,
+        location: appointmentToCancel.location,
+        therapist_name: therapist.full_name || 'Your Therapist',
+        therapist_photo_url: therapist.photo_url
       });
 
       toast({

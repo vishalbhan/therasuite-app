@@ -141,10 +141,9 @@ serve(async (req) => {
                 }
               </ul>
               ${data.session_type === 'video' ? 
-                `<p><em>${data.video_provider === 'therasuite' ? 
-                  'You will receive a video call link at the time of the appointment.' :
-                  `This session will be conducted via ${data.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}. The link will be shared before the session.`
-                }</em></p>` 
+                `<p><em>
+                  'You will receive a video call link at the time of the appointment.'
+                  </em></p>` 
                 : `<p style="text-align: center;">
                     <a href="${googleCalendarUrl}" target="_blank" class="button">Add to Google Calendar</a>
                    </p>`
@@ -160,18 +159,40 @@ serve(async (req) => {
         await resend.emails.send({
           from: 'appointments@therasuite.app',
           to: data.client_email,
-          subject: 'Appointment Cancellation',
+          subject: `${data.therapist_name} has cancelled your appointment`,
           html: emailTemplate(`
             <h1>Appointment Cancelled</h1>
             <p>Dear ${data.client_name},</p>
             
             <div class="details-box">
+              <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                ${data.therapist_photo_url ? 
+                  `<img src="${data.therapist_photo_url}" alt="Therapist" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 15px;" />` 
+                  : ''
+                }
+                <div>
+                  <p><strong>Your Therapist:</strong><br/>
+                  ${data.therapist_name}</p>
+                </div>
+              </div>
+
               <h2>Cancelled Appointment Details</h2>
-              <p>Your appointment scheduled for ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} has been cancelled.</p>
+              <ul style="list-style: none; padding-left: 0;">
+                <li>📅 <strong>Date:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(',')[0]}</li>
+                <li>⏰ <strong>Time:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}</li>
+                <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
+                <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
+                ${data.session_type === 'in_person' && data.location ? 
+                  `<li>📍 <strong>Location:</strong> ${data.location}</li>` 
+                  : ''
+                }
+              </ul>
             </div>
 
-            <p>If you would like to reschedule, please book a new appointment.</p>
-            <p>We apologize for any inconvenience.</p>
+            <p>If you would like to reschedule, please contact your therapist or book a new appointment through our platform.</p>
+            <p>We apologize for any inconvenience this may have caused.</p>
+            
+            <p>Best regards,<br/>TheraSuite Team</p>
           `)
         });
         break;

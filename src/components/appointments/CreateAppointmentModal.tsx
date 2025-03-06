@@ -856,28 +856,30 @@ export function CreateAppointmentModal({
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="recurring_day"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Repeat Every</FormLabel>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        {...field}
-                      >
-                        <option value="monday">Every Monday</option>
-                        <option value="tuesday">Every Tuesday</option>
-                        <option value="wednesday">Every Wednesday</option>
-                        <option value="thursday">Every Thursday</option>
-                        <option value="friday">Every Friday</option>
-                        <option value="saturday">Every Saturday</option>
-                        <option value="sunday">Every Sunday</option>
-                      </select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isRecurring && (
+                  <FormField
+                    control={form.control}
+                    name="recurring_day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Repeat Every</FormLabel>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          {...field}
+                        >
+                          <option value="monday">Every Monday</option>
+                          <option value="tuesday">Every Tuesday</option>
+                          <option value="wednesday">Every Wednesday</option>
+                          <option value="thursday">Every Thursday</option>
+                          <option value="friday">Every Friday</option>
+                          <option value="saturday">Every Saturday</option>
+                          <option value="sunday">Every Sunday</option>
+                        </select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
