@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -44,6 +44,8 @@ interface AppointmentsListProps {
   renderNotes?: (notes: string | undefined) => React.ReactNode;
   onDateChange?: (date: Date) => void;
 }
+
+type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 function AppointmentSkeleton() {
   return (
@@ -337,6 +339,31 @@ export function AppointmentsList({
     }
   };
 
+  const handleStatusUpdate = async (appointment: Appointment, newStatus: AppointmentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: newStatus })
+        .eq('id', appointment.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Appointment marked as ${newStatus}`,
+      });
+
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handlePreviousWeek = () => {
     if (onDateChange) {
       if (isWeekView) {
@@ -518,6 +545,26 @@ export function AppointmentsList({
                               </Button>
                             </div>
                           )}
+                          {appointment.session_type === 'in_person' && 
+                           appointment.status === 'scheduled' && 
+                           isAppointmentActive(appointment) && (
+                            <div className="flex justify-end gap-2 mt-4">
+                              <Button 
+                                onClick={() => handleStatusUpdate(appointment, 'cancelled')}
+                                variant="destructive"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Mark as Cancelled
+                              </Button>
+                              <Button 
+                                onClick={() => handleStatusUpdate(appointment, 'completed')}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Mark as Completed
+                              </Button>
+                            </div>
+                          )}
                           {appointment.notes && (
                             <div className="mt-4">
                               <div className="flex items-center justify-between gap-4">
@@ -637,6 +684,26 @@ export function AppointmentsList({
                         Start Video Call
                       </>
                     )}
+                  </Button>
+                </div>
+              )}
+              {appointment.session_type === 'in_person' && 
+               appointment.status === 'scheduled' && 
+               isAppointmentActive(appointment) && (
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button 
+                    onClick={() => handleStatusUpdate(appointment, 'cancelled')}
+                    variant="destructive"
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Mark as Cancelled
+                  </Button>
+                  <Button 
+                    onClick={() => handleStatusUpdate(appointment, 'completed')}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Mark as Completed
                   </Button>
                 </div>
               )}
