@@ -33,24 +33,22 @@ import {
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Textarea } from "@/components/ui/textarea";
 
-// Replace formSchema
+// Update the formSchema to handle the initial state better
 const formSchema = z.object({
   photo_url: z.string().nullable(),
-  full_name: z.string().nullable().pipe(
-    z.string().min(2, "Name must be at least 2 characters").nullable()
-  ),
+  full_name: z.string().nullable(),
   professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
   session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
-  currency: z.string().min(1, "Currency is required"),
+  currency: z.string(),
   payment_details: z.string().nullable(),
   location: z.object({
-    address: z.string(),
-    city: z.string(),
-    state: z.string(),
-    country: z.string(),
-    postal_code: z.string()
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postal_code: z.string().optional()
   }).nullable(),
-});
+}).partial(); // Make all fields optional
 
 // Update type definition
 type FormValues = z.infer<typeof formSchema>;
@@ -71,7 +69,8 @@ export default function Settings() {
       currency: 'INR',
       payment_details: '',
       location: null,
-    }
+    },
+    mode: 'onSubmit', // Change from onChange to onSubmit
   });
 
   const { setCurrency: setGlobalCurrency } = useCurrency();
@@ -93,13 +92,16 @@ export default function Settings() {
 
         if (error) throw error;
         
-        // Only reset form with non-null values from profile
-        const formData = Object.entries(profile).reduce((acc, [key, value]) => {
-          if (value !== null) {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as Partial<FormValues>);
+        // Ensure all required fields have default values
+        const formData = {
+          photo_url: profile.photo_url ?? null,
+          full_name: profile.full_name ?? '',
+          professional_type: profile.professional_type ?? null,
+          session_type: profile.session_type ?? null,
+          currency: profile.currency ?? 'INR',
+          payment_details: profile.payment_details ?? '',
+          location: profile.location ?? null,
+        };
 
         form.reset(formData);
       } catch (error) {
@@ -115,14 +117,20 @@ export default function Settings() {
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSaving(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        toast.error("Authentication error. Please try signing in again.");
+        return;
+      }
       
       if (!session) {
+        toast.error("No active session. Please sign in again.");
         navigate('/');
         return;
       }
 
-      // Create a properly typed update object
+      // Create update object based on session type
       const updateData = {
         photo_url: values.photo_url,
         full_name: values.full_name,
@@ -130,22 +138,30 @@ export default function Settings() {
         session_type: values.session_type,
         currency: values.currency,
         payment_details: values.payment_details,
-        location: values.location,
-        updated_at: new Date().toISOString() // Add updated_at timestamp
+        ...(values.session_type === 'video' ? {} : { location: values.location }),
+        updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', session.user.id);
 
-      if (error) throw error;
+      if (updateError) {
+        if (updateError.code === '23505') {
+          toast.error("A conflict occurred while saving. Please try again.");
+        } else if (updateError.code === 'PGRST116') {
+          toast.error("You don't have permission to update this profile.");
+        } else {
+          toast.error(`Failed to save settings: ${updateError.message}`);
+        }
+        return;
+      }
 
       setGlobalCurrency(values.currency);
       toast.success("Settings saved successfully");
     } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error("Failed to save settings");
+      toast.error("An unexpected error occurred while saving");
     } finally {
       setIsSaving(false);
     }
