@@ -6,7 +6,8 @@ import {
   Receipt,
   Plus,
   Settings,
-  Menu
+  Menu,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,11 @@ const navItems = [
     label: "Clients",
     icon: Users,
     href: "/clients",
+  },
+  {
+    label: "Notes",
+    icon: FileText,
+    href: "/notes",
   },
   {
     label: "Invoices",

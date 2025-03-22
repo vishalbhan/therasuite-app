@@ -21,6 +21,7 @@ import LogRocket from 'logrocket';
 import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import Notes from "@/pages/Notes";
 LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
@@ -46,6 +47,7 @@ const App = () => {
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/clients/:clientId" element={<ClientDetails />} />
+                  <Route path="/notes" element={<Notes />} />
                   <Route path="/invoices" element={<Invoices />} />
                   <Route path="/settings" element={<Settings />} />
                 </Route>
