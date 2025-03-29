@@ -1,6 +1,6 @@
 import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import DyteClient from '@dytesdk/web-core';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, MouseEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { VideoMeeting } from '@/types/dyte';
 import { NotesModal } from "@/components/appointments/NotesModal";
@@ -22,6 +22,11 @@ interface Appointment {
   notes?: string;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [meeting, setMeeting] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +37,30 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [hasCallEnded, setHasCallEnded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState<Position>({ x: 20, y: 20 });
+  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
   useEffect(() => {
     const setupMeeting = async () => {
@@ -92,6 +121,18 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
     };
   }, [appointmentId]);
 
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove as any);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove as any);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
+
   const handleSaveNotes = async () => {
     try {
       setIsSaving(true);
@@ -139,25 +180,18 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   }
 
   return (
-    <div className="relative flex h-screen">
-      <div className={`flex-1 transition-all duration-300 ${showNotesSidebar ? 'mr-[400px]' : ''}`}>
-        <DyteMeeting
-          meeting={meeting}
-          className="w-full h-screen"
-          showSetupScreen
-          onMeetingEnded={() => {
-            setShowNotesModal(true);
-            setHasCallEnded(true);
-            setShowNotesSidebar(false);
-          }}
-          onError={(error) => {
-            console.error('Dyte meeting error:', error);
-            setError('Error in video call. Please try refreshing the page.');
-          }}
-        />
-      </div>
+    <div className="relative h-screen">
+      <DyteMeeting
+        meeting={meeting}
+        className="w-full h-screen"
+        showSetupScreen
+        onError={(error) => {
+          console.error('Dyte meeting error:', error);
+          setError('Error in video call. Please try refreshing the page.');
+        }}
+      />
 
-      {/* Notes Sidebar Toggle Button - Only show if call hasn't ended */}
+      {/* Notes Toggle Button - Only show if call hasn't ended */}
       {!hasCallEnded && (
         <Button
           variant="outline"
@@ -168,29 +202,45 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         </Button>
       )}
 
-      {/* Notes Sidebar - Only show if call hasn't ended */}
-      {!hasCallEnded && (
+      {/* Draggable Notes Box - Only show if call hasn't ended and notes are visible */}
+      {!hasCallEnded && showNotesSidebar && (
         <div
-          className={`fixed right-0 top-0 h-full w-[400px] bg-white shadow-lg transform transition-transform duration-300 z-[9999] ${
-            showNotesSidebar ? 'translate-x-0' : 'translate-x-full'
-          }`}
+          className="fixed bg-white rounded-lg shadow-lg z-[9999] w-[400px] h-[400px] flex flex-col"
+          style={{
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            cursor: isDragging ? 'grabbing' : 'grab',
+          }}
         >
-          <div className="p-4 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Session Notes</h3>
+          <div
+            className="p-3 bg-gray-50 rounded-t-lg cursor-grab border-b flex items-center justify-between"
+            onMouseDown={handleMouseDown}
+          >
+            <h3 className="text-sm font-semibold">Session Notes</h3>
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleSaveNotes}
                 disabled={isSaving}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 h-7 text-xs"
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-3 w-3" />
                 {isSaving ? 'Saving...' : 'Save'}
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowNotesSidebar(false)}
+                className="h-7 w-7 p-0"
+              >
+                ×
+              </Button>
             </div>
-            
+          </div>
+
+          <div className="p-3 flex-1 flex flex-col overflow-hidden">
             {appointment && (
-              <div className="mb-4 text-sm text-gray-600">
+              <div className="mb-2 text-xs text-gray-600">
                 <p>Client: {appointment.client_email}</p>
                 <p>Date: {new Date(appointment.session_date).toLocaleDateString()}</p>
               </div>
@@ -200,7 +250,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Take notes during the session..."
-              className="flex-1 resize-none"
+              className="flex-1 resize-none text-sm"
             />
           </div>
         </div>
@@ -212,7 +262,6 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         appointmentId={appointmentId}
         existingNotes={notes}
         onSuccess={() => {
-          // Redirect to the dashboard after saving notes
           window.location.href = '/dashboard';
         }}
       />
