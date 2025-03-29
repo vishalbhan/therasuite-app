@@ -343,7 +343,10 @@ export function AppointmentsList({
   const handleCopyJoinLink = async (appointment: Appointment) => {
     try {
       setCopyingLink(appointment.id);
-      const joinLink = `${window.location.origin}/client-video/${appointment.id}`;
+      const joinLink = appointment.video_provider === 'therasuite' 
+        ? `${window.location.origin}/client-video/${appointment.id}`
+        : appointment.custom_meeting_link;
+        
       await navigator.clipboard.writeText(joinLink);
       toast({
         title: "Success",
