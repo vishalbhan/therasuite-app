@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -125,6 +125,7 @@ export function AppointmentsList({
     notes: string;
   } | null>(null);
   const [startingCall, setStartingCall] = useState<string | null>(null);
+  const [copyingLink, setCopyingLink] = useState<string | null>(null);
 
   useEffect(() => {
     checkAndUpdateCompletedAppointments(appointments);
@@ -339,6 +340,26 @@ export function AppointmentsList({
     }
   };
 
+  const handleCopyJoinLink = async (appointment: Appointment) => {
+    try {
+      setCopyingLink(appointment.id);
+      const joinLink = `${window.location.origin}/client-video/${appointment.id}`;
+      await navigator.clipboard.writeText(joinLink);
+      toast({
+        title: "Success",
+        description: "Join link copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy join link",
+        variant: "destructive",
+      });
+    } finally {
+      setCopyingLink(null);
+    }
+  };
+
   const handleStatusUpdate = async (appointment: Appointment, newStatus: AppointmentStatus) => {
     try {
       const { error } = await supabase
@@ -464,12 +485,15 @@ export function AppointmentsList({
                         >
                           <div className="flex justify-between items-start">
                             <div>
+                              <div className="flex items-center gap-2 text-base font-medium text-blue-600 mb-1">
+                                <Clock className="h-4 w-4" />
+                                {formatTimeRange(appointment.session_date, appointment.session_length)}
+                              </div>
                               <h3 className="font-semibold text-lg">
                                 {appointment.client_name}
                               </h3>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                                <Clock className="h-4 w-4" />
-                                {formatTimeRange(appointment.session_date, appointment.session_length)} · {appointment.session_length} mins
+                                <span className="text-muted-foreground">{appointment.session_length} mins</span>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 {appointment.session_type === 'video' ? (
@@ -525,7 +549,24 @@ export function AppointmentsList({
                           {appointment.session_type === 'video' && 
                            appointment.status === 'scheduled' && 
                            isAppointmentActive(appointment) && (
-                            <div className="flex justify-end mt-4">
+                            <div className="flex justify-end gap-2 mt-4">
+                              <Button 
+                                variant="outline"
+                                onClick={() => handleCopyJoinLink(appointment)}
+                                disabled={copyingLink === appointment.id}
+                              >
+                                {copyingLink === appointment.id ? (
+                                  <>
+                                    <span className="loading loading-spinner loading-xs mr-2" />
+                                    Copying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-4 w-4 mr-1" />
+                                    Copy Join Link
+                                  </>
+                                )}
+                              </Button>
                               <Button 
                                 onClick={() => handleStartVideoCall(appointment)}
                                 className="bg-green-600 hover:bg-green-700"
@@ -606,12 +647,15 @@ export function AppointmentsList({
             >
               <div className="flex justify-between items-start">
                 <div>
+                  <div className="flex items-center gap-2 text-base font-medium text-blue-600 mb-1">
+                    <Clock className="h-4 w-4" />
+                    {formatTimeRange(appointment.session_date, appointment.session_length)}
+                  </div>
                   <h3 className="font-semibold text-lg">
                     {appointment.client_name}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                    <Clock className="h-4 w-4" />
-                    {formatTimeRange(appointment.session_date, appointment.session_length)} · {appointment.session_length} mins
+                    <span className="text-muted-foreground">{appointment.session_length} mins</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                     {appointment.session_type === 'video' ? (
@@ -667,7 +711,24 @@ export function AppointmentsList({
               {appointment.session_type === 'video' && 
                appointment.status === 'scheduled' && 
                isAppointmentActive(appointment) && (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleCopyJoinLink(appointment)}
+                    disabled={copyingLink === appointment.id}
+                  >
+                    {copyingLink === appointment.id ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs mr-2" />
+                        Copying...
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy Join Link
+                      </>
+                    )}
+                  </Button>
                   <Button 
                     onClick={() => handleStartVideoCall(appointment)}
                     className="bg-green-600 hover:bg-green-700"
