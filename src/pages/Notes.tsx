@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { FileText, Eye } from 'lucide-react';
+import { FileText, Eye, History } from 'lucide-react';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +108,7 @@ export default function Notes() {
                     className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
                   >
                     <Eye className="h-4 w-4 mr-0.5" />
-                    View Notes
+                    Edit Note
                   </Button>
                   <Button
                     variant="ghost"
@@ -116,7 +116,7 @@ export default function Notes() {
                     onClick={() => navigate(`/clients/${note.client_id}`)}
                     className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
                   >
-                    <FileText className="h-4 w-4 mr-0.5" />
+                    <History className="h-4 w-4 mr-0.5" />
                     Client History
                   </Button>
                 </td>
@@ -155,7 +155,7 @@ export default function Notes() {
                 className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
               >
                 <Eye className="h-4 w-4 mr-1.5" />
-                View Notes
+                Edit Note
               </Button>
               <Button
                 variant="ghost"
@@ -163,7 +163,7 @@ export default function Notes() {
                 onClick={() => navigate(`/clients/${note.client_id}`)}
                 className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
               >
-                <FileText className="h-4 w-4 mr-1.5" />
+                <History className="h-4 w-4 mr-1.5" />
                 Client History
               </Button>
             </div>
