@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft, Eye, Save, Plus } from 'lucide-react';
+import { ChevronLeft, Eye, Save, Plus, ChevronRight } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Textarea } from '@/components/ui/textarea';
@@ -86,6 +86,7 @@ export default function ClientDetails() {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [diagnosis, setDiagnosis] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     const fetchClientDetails = async () => {
@@ -93,7 +94,7 @@ export default function ClientDetails() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Fetch client details - fix the type error
+        // Fetch client details
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
           .select('*')
@@ -104,12 +105,17 @@ export default function ClientDetails() {
         if (clientError) throw clientError;
         setClient(clientData as Client);
 
-        // Fetch client's appointments - fix the type error
+        // Fetch client's appointments for current month
+        const startDate = startOfMonth(currentDate);
+        const endDate = endOfMonth(currentDate);
+
         const { data: appointmentsData, error: appointmentsError } = await supabase
           .from('appointments')
           .select('*')
           .eq('client_id', clientId)
           .eq('therapist_id', user.id)
+          .gte('session_date', startDate.toISOString())
+          .lte('session_date', endDate.toISOString())
           .order('session_date', { ascending: false });
 
         if (appointmentsError) throw appointmentsError;
@@ -122,7 +128,7 @@ export default function ClientDetails() {
     };
 
     fetchClientDetails();
-  }, [clientId]);
+  }, [clientId, currentDate]);
 
   useEffect(() => {
     if (client) {
@@ -158,6 +164,14 @@ export default function ClientDetails() {
       toast.error('Failed to update client details');
       console.error(error);
     }
+  };
+
+  const handlePreviousMonth = () => {
+    setCurrentDate(prev => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => addMonths(prev, 1));
   };
 
   if (loading) {
@@ -281,9 +295,33 @@ export default function ClientDetails() {
       </Card>
 
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-xl font-semibold mb-4">Appointment History</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Appointment History</h2>
+          <div className="flex items-center bg-primary/5 rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePreviousMonth}
+              className="hover:bg-primary/10 text-primary"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <span className="text-lg font-medium px-4 text-primary">
+              {format(currentDate, 'MMMM yyyy')}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNextMonth}
+              className="hover:bg-primary/10 text-primary"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
         {appointments.length === 0 ? (
-          <p className="text-gray-500">No appointments yet</p>
+          <p className="text-gray-500">No appointments for this month</p>
         ) : (
           <div className="space-y-8">
             {/* Today's Appointments */}
