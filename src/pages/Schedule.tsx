@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
-import './schedule.css';
+import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import clsx from 'clsx';
+import { AppointmentDetailsModal } from '@/components/appointments/AppointmentDetailsModal';
+import { Database } from '@/types/supabase';
 
 interface Appointment {
   id: string;
@@ -16,11 +16,33 @@ interface Appointment {
   session_length: number;
   session_type: 'video' | 'in_person';
   status: 'scheduled' | 'completed' | 'cancelled';
+  therapist_id: string;
 }
+
+// Add this helper function to format date-time for the create modal
+const formatDateForCreateModal = (date: Date, timeSlot: string) => {
+  const [hours, minutes] = timeSlot.split(':');
+  const newDate = new Date(date);
+  newDate.setHours(parseInt(hours), parseInt(minutes));
+  return newDate.toISOString();
+};
 
 export default function Schedule() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  
+  // Generate week days starting from current date
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  
+  // Generate time slots from 6 AM to 10 PM
+  const timeSlots = Array.from({ length: 33 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 6; // Start from 6 AM
+    const minutes = i % 2 === 0 ? '00' : '30';
+    return `${hour.toString().padStart(2, '0')}:${minutes}`; // Ensure 2-digit hours
+  });
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -32,10 +54,13 @@ export default function Schedule() {
           .from('appointments')
           .select('*')
           .eq('therapist_id', user.id)
-          .order('session_date', { ascending: true });
+          .order('session_date', { ascending: true }) as { 
+            data: Appointment[] | null; 
+            error: any; 
+          };
 
         if (error) throw error;
-        setAppointments(data);
+        if (data) setAppointments(data);
       } catch (error) {
         toast.error("Error fetching appointments");
       }
@@ -44,68 +69,113 @@ export default function Schedule() {
     fetchAppointments();
   }, []);
 
-  // Transform appointments for FullCalendar
-  const events = appointments.map(appointment => {
-    const startDate = new Date(appointment.session_date);
-    const endDate = new Date(startDate.getTime() + appointment.session_length * 60000);
+  const getAppointmentsForDateAndTime = (date: Date, timeSlot: string) => {
+    return appointments.filter(apt => {
+      const aptDate = new Date(apt.session_date);
+      return isSameDay(aptDate, date) && 
+             format(aptDate, 'HH:mm') === timeSlot;
+    });
+  };
 
-    return {
-      id: appointment.id,
-      title: `${appointment.client_name} (${appointment.session_type === 'video' ? 'Video' : 'In-Person'})`,
-      start: startDate,
-      end: endDate,
-      backgroundColor: getEventColor(appointment.status),
-      borderColor: getEventColor(appointment.status),
-      textColor: 'white',
-      extendedProps: {
-        status: appointment.status,
-        type: appointment.session_type
-      }
-    };
-  });
+  const handlePrevWeek = () => {
+    setCurrentDate(prev => addDays(prev, -7));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate(prev => addDays(prev, 7));
+  };
 
   return (
-    <div className="h-[calc(100vh-9rem)]">
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
-        headerToolbar={{
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay'
-        }}
-        events={events}
-        slotMinTime="06:00:00"
-        slotMaxTime="22:00:00"
-        allDaySlot={false}
-        slotDuration="00:30:00"
-        height="100%"
-        nowIndicator={true}
-        selectable={true}
-        selectMirror={true}
-        slotLaneClassNames="hover:bg-violet-50 transition-colors"
-        select={(info) => {
-          // Open create modal with pre-filled date/time
-          const params = new URLSearchParams(searchParams);
-          params.set('modal', 'create');
-          params.set('date', info.startStr);
-          setSearchParams(params);
-        }}
-        eventClick={(info) => {
-          // Handle event click - could open edit modal
-          console.log('Event clicked:', info.event);
-        }}
-        buttonText={{
-          today: 'Today',
-          month: 'Month',
-          week: 'Week',
-          day: 'Day',
-          prev: '',
-          next: '',
-        }}
-        buttonIcons={{
-          prev: 'chevron-left',
-          next: 'chevron-right',
+    <div className="h-[calc(100vh-9rem)] flex flex-col">
+      {/* Header with navigation */}
+      <div className="flex items-center p-4 border-b">
+        <div className="flex items-center gap-4">
+          <button onClick={handlePrevWeek} className="p-1 hover:bg-gray-100 rounded">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button onClick={handleNextWeek} className="p-1 hover:bg-gray-100 rounded">
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-semibold">
+            {format(weekStart, 'MMMM d')} - {format(addDays(weekStart, 6), 'MMMM d, yyyy')}
+          </h2>
+        </div>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="flex-1 overflow-auto">
+        <div className="grid grid-cols-8 h-full">
+          {/* Time column */}
+          <div className="border-r">
+            <div className="h-12 border-b"></div> {/* Empty corner */}
+            {timeSlots.map(time => (
+              <div key={time} className="h-16 border-b px-2 text-sm text-gray-500">
+                {time}
+              </div>
+            ))}
+          </div>
+
+          {/* Days columns */}
+          {weekDays.map((day, index) => (
+            <div key={index} className="border-r">
+              <div className="h-12 border-b p-2 text-center">
+                <div className="text-sm text-gray-500">{format(day, 'EEE')}</div>
+                <div className={clsx(
+                  "inline-flex items-center justify-center w-8 h-8 rounded-full",
+                  isSameDay(day, new Date()) && "bg-blue-600 text-white"
+                )}>
+                  {format(day, 'd')}
+                </div>
+              </div>
+              {timeSlots.map(time => {
+                const appointments = getAppointmentsForDateAndTime(day, time);
+                return (
+                  <div 
+                    key={`${day}-${time}`} 
+                    className="h-16 border-b relative group"
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams);
+                      params.set('modal', 'create');
+                      params.set('date', formatDateForCreateModal(day, time));
+                      setSearchParams(params);
+                    }}
+                  >
+                    {appointments.map(apt => (
+                      <div
+                        key={apt.id}
+                        className={clsx(
+                          "absolute inset-x-1 rounded p-2 text-sm text-white",
+                          apt.session_type === 'video' ? 'bg-blue-600' : 'bg-blue-300',
+                          "cursor-pointer z-10" // Add z-index to ensure it's above the time slot
+                        )}
+                        style={{
+                          top: '4px',
+                          height: `calc(${apt.session_length / 30} * 4rem - 8px)`
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedAppointment(apt);
+                        }}
+                      >
+                        {apt.client_name} - {apt.session_type === 'video' ? 'Video' : 'In-Person'}
+                      </div>
+                    ))}
+                    {/* Move the hover effect div below appointments but keep pointer events */}
+                    <div className="absolute inset-0 group-hover:bg-violet-50 transition-colors pointer-events-none"></div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <AppointmentDetailsModal
+        appointment={selectedAppointment}
+        open={selectedAppointment !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAppointment(null);
         }}
       />
 
@@ -122,15 +192,4 @@ export default function Schedule() {
       />
     </div>
   );
-}
-
-function getEventColor(status: string): string {
-  switch (status) {
-    case 'completed':
-      return '#16a34a'; // green-600
-    case 'cancelled':
-      return '#dc2626'; // red-600
-    default:
-      return '#7c3aed'; // violet-600
-  }
 } 

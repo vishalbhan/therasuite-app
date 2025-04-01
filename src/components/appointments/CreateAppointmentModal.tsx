@@ -263,7 +263,7 @@ export function CreateAppointmentModal({
       client_name: defaultClient?.name || "",
       client_email: defaultClient?.email || "",
       session_date: defaultDate ? new Date(defaultDate) : undefined,
-      session_time: defaultDate ? format(new Date(defaultDate), "HH:mm") : "",
+      session_time: defaultDate ? format(new Date(defaultDate), 'HH:mm') : "",
       session_length: "60",
       session_type: "video",
       video_provider: "therasuite",
@@ -275,13 +275,21 @@ export function CreateAppointmentModal({
         country: "",
         postal_code: ""
       },
-      price: "",
+      price: "0",
       notes: "",
       is_recurring: false,
       recurring_day: undefined,
       number_of_sessions: undefined,
     },
   });
+
+  useEffect(() => {
+    if (defaultDate) {
+      const date = new Date(defaultDate);
+      form.setValue('session_date', date);
+      form.setValue('session_time', format(date, 'HH:mm'));
+    }
+  }, [defaultDate, form]);
 
   const isRecurring = form.watch('is_recurring');
 

@@ -34,6 +34,12 @@ export type Appointment = {
   created_at?: string;
 };
 
+// Add this helper function at the top level
+const calculatePercentageChange = (current: number, previous: number): number => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+};
+
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -196,7 +202,8 @@ export default function Dashboard() {
         (lastWeekData?.reduce((acc, apt) => acc + (apt.session_length || 0), 0) || 0) / 60
       );
 
-      const weeklyChange = thisWeekHours - lastWeekHours;
+      // Calculate percentage change for weekly hours
+      const weeklyChangePercent = calculatePercentageChange(thisWeekHours, lastWeekHours);
 
       // Calculate total unique clients (removing the 30-day restriction)
       const { data: clientData } = await supabase
@@ -235,7 +242,9 @@ export default function Dashboard() {
         .not('price', 'is', null);
 
       const lastMonthRevenue = lastMonthData?.reduce((acc, apt) => acc + (apt.price || 0), 0) || 0;
-      const revenueChange = thisMonthRevenue - lastMonthRevenue;
+      
+      // Calculate percentage change for revenue
+      const revenueChangePercent = calculatePercentageChange(thisMonthRevenue, lastMonthRevenue);
 
       setStats({
         todaysSessions: { 
@@ -244,7 +253,7 @@ export default function Dashboard() {
         },
         weeklyHours: { 
           total: thisWeekHours,
-          change: weeklyChange
+          change: weeklyChangePercent
         },
         activeClients: { 
           total: totalClientsCount,
@@ -252,7 +261,7 @@ export default function Dashboard() {
         },
         revenue: {
           total: thisMonthRevenue,
-          change: revenueChange
+          change: revenueChangePercent
         }
       });
 
@@ -298,12 +307,12 @@ export default function Dashboard() {
                 {stats.weeklyHours.change > 0 ? (
                   <>
                     <ArrowUpIcon className="h-3 w-3" />
-                    +{stats.weeklyHours.change}
+                    +{stats.weeklyHours.change}%
                   </>
                 ) : (
                   <>
                     <ArrowDownIcon className="h-3 w-3" />
-                    {stats.weeklyHours.change}
+                    {stats.weeklyHours.change}%
                   </>
                 )} from last week
               </p>
@@ -335,12 +344,12 @@ export default function Dashboard() {
                 {stats.revenue.change > 0 ? (
                   <>
                     <ArrowUpIcon className="h-3 w-3" />
-                    +₹{Math.abs(stats.revenue.change).toLocaleString()}
+                    +{stats.revenue.change}%
                   </>
                 ) : (
                   <>
                     <ArrowDownIcon className="h-3 w-3" />
-                    -₹{Math.abs(stats.revenue.change).toLocaleString()}
+                    {stats.revenue.change}%
                   </>
                 )} from last month
               </p>
