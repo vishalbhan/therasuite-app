@@ -51,9 +51,24 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging) {
+      // Calculate new position
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+
+      // Get window dimensions
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+
+      // Set bounds (20px from edges)
+      const minX = 20;
+      const minY = 20;
+      const maxX = windowWidth - 420; // 400px width + 20px margin
+      const maxY = windowHeight - 420; // 400px height + 20px margin
+
+      // Clamp the position within bounds
       setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
+        x: Math.min(Math.max(newX, minX), maxX),
+        y: Math.min(Math.max(newY, minY), maxY),
       });
     }
   };
