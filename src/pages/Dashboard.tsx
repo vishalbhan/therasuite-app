@@ -247,7 +247,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Today's Sessions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.todaysSessions.total}</div>
+            <div className="text-3xl font-bold text-blue-700">{stats.todaysSessions.total}</div>
             <p className="text-xs text-muted-foreground">
               {stats.todaysSessions.remaining} remaining
             </p>
@@ -259,7 +259,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Weekly Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.weeklyHours.total}</div>
+            <div className="text-3xl font-bold text-blue-700">{stats.weeklyHours.total}</div>
           </CardContent>
         </Card>
 
@@ -268,7 +268,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.activeClients.total}</div>
+            <div className="text-3xl font-bold text-blue-700">{stats.activeClients.total}</div>
           </CardContent>
         </Card>
 
@@ -277,7 +277,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Revenue this month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-3xl font-bold text-blue-700">
               ₹{stats.revenue.total.toLocaleString()}
             </div>
           </CardContent>

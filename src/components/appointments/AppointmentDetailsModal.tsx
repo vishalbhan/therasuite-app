@@ -15,9 +15,15 @@ interface AppointmentDetailsModalProps {
   appointment: Appointment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  actions?: React.ReactNode;
 }
 
-export function AppointmentDetailsModal({ appointment, open, onOpenChange }: AppointmentDetailsModalProps) {
+export function AppointmentDetailsModal({
+  appointment,
+  open,
+  onOpenChange,
+  actions
+}: AppointmentDetailsModalProps) {
   if (!appointment) return null;
 
   return (
@@ -65,6 +71,12 @@ export function AppointmentDetailsModal({ appointment, open, onOpenChange }: App
             </Badge>
           </div>
         </div>
+
+        {actions && (
+          <div className="flex justify-end mt-4 pt-4 border-t">
+            {actions}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

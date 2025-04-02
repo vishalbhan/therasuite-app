@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,15 @@ export function UpdatePriceModal({
   currentPrice,
   onUpdate
 }: UpdatePriceModalProps) {
-  const [price, setPrice] = useState(currentPrice.toString());
+  const [price, setPrice] = useState(currentPrice.toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currency } = useCurrency();
+
+  useEffect(() => {
+    if (open) {
+      setPrice(currentPrice.toFixed(2));
+    }
+  }, [open, currentPrice]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

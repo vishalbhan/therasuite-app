@@ -8,6 +8,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import { AppointmentDetailsModal } from '@/components/appointments/AppointmentDetailsModal';
 import { Database } from '@/types/supabase';
+import { EditAppointmentModal } from '@/components/appointments/EditAppointmentModal';
+import { Button } from '@/components/ui/button';
+import { CalendarPlus } from 'lucide-react';
 
 interface Appointment {
   id: string;
@@ -32,6 +35,7 @@ export default function Schedule() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Generate week days starting from current date
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
@@ -187,6 +191,29 @@ export default function Schedule() {
         open={selectedAppointment !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedAppointment(null);
+        }}
+        actions={
+          <Button
+            onClick={() => {
+              setShowEditModal(true);
+            }}
+            variant="outline"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            Reschedule
+          </Button>
+        }
+      />
+
+      <EditAppointmentModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        appointment={selectedAppointment}
+        onSuccess={() => {
+          setShowEditModal(false);
+          setSelectedAppointment(null);
+          window.location.reload(); // Refresh to show updated appointment
         }}
       />
 
