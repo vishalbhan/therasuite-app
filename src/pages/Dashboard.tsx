@@ -34,12 +34,6 @@ export type Appointment = {
   created_at?: string;
 };
 
-// Add this helper function at the top level
-const calculatePercentageChange = (current: number, previous: number): number => {
-  if (previous === 0) return current > 0 ? 100 : 0;
-  return Math.round(((current - previous) / previous) * 100);
-};
-
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -188,24 +182,7 @@ export default function Dashboard() {
         (weekData?.reduce((acc, apt) => acc + (apt.session_length || 0), 0) || 0) / 60
       );
 
-      // Calculate last week's hours
-      const lastWeekStart = subWeeks(weekStart, 1);
-      const lastWeekEnd = subWeeks(weekEnd, 1);
-      const { data: lastWeekData } = await supabase
-        .from('appointments')
-        .select('session_length')
-        .eq('therapist_id', user.id)
-        .gte('session_date', lastWeekStart.toISOString())
-        .lte('session_date', lastWeekEnd.toISOString());
-
-      const lastWeekHours = Math.round(
-        (lastWeekData?.reduce((acc, apt) => acc + (apt.session_length || 0), 0) || 0) / 60
-      );
-
-      // Calculate percentage change for weekly hours
-      const weeklyChangePercent = calculatePercentageChange(thisWeekHours, lastWeekHours);
-
-      // Calculate total unique clients (removing the 30-day restriction)
+      // Calculate total unique clients
       const { data: clientData } = await supabase
         .from('appointments')
         .select('client_id')
@@ -229,23 +206,6 @@ export default function Dashboard() {
 
       const thisMonthRevenue = monthData?.reduce((acc, apt) => acc + (apt.price || 0), 0) || 0;
 
-      // Calculate last month's revenue
-      const lastMonthStart = subMonths(monthStart, 1);
-      const lastMonthEnd = subMonths(monthEnd, 1);
-      const { data: lastMonthData } = await supabase
-        .from('appointments')
-        .select('price')
-        .eq('therapist_id', user.id)
-        .gte('session_date', lastMonthStart.toISOString())
-        .lte('session_date', lastMonthEnd.toISOString())
-        .in('status', ['scheduled', 'completed'])
-        .not('price', 'is', null);
-
-      const lastMonthRevenue = lastMonthData?.reduce((acc, apt) => acc + (apt.price || 0), 0) || 0;
-      
-      // Calculate percentage change for revenue
-      const revenueChangePercent = calculatePercentageChange(thisMonthRevenue, lastMonthRevenue);
-
       setStats({
         todaysSessions: { 
           total: totalToday, 
@@ -253,7 +213,7 @@ export default function Dashboard() {
         },
         weeklyHours: { 
           total: thisWeekHours,
-          change: weeklyChangePercent
+          change: 0 // Set to 0 since we're not showing change
         },
         activeClients: { 
           total: totalClientsCount,
@@ -261,7 +221,7 @@ export default function Dashboard() {
         },
         revenue: {
           total: thisMonthRevenue,
-          change: revenueChangePercent
+          change: 0 // Set to 0 since we're not showing change
         }
       });
 
@@ -300,23 +260,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{stats.weeklyHours.total}</div>
-            {stats.weeklyHours.change !== 0 && (
-              <p className={`text-xs flex items-center gap-1 ${
-                stats.weeklyHours.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stats.weeklyHours.change > 0 ? (
-                  <>
-                    <ArrowUpIcon className="h-3 w-3" />
-                    +{stats.weeklyHours.change}%
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownIcon className="h-3 w-3" />
-                    {stats.weeklyHours.change}%
-                  </>
-                )} from last week
-              </p>
-            )}
           </CardContent>
         </Card>
 
@@ -337,23 +280,6 @@ export default function Dashboard() {
             <div className="text-2xl font-bold text-blue-600">
               ₹{stats.revenue.total.toLocaleString()}
             </div>
-            {stats.revenue.change !== 0 && (
-              <p className={`text-xs flex items-center gap-1 ${
-                stats.revenue.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stats.revenue.change > 0 ? (
-                  <>
-                    <ArrowUpIcon className="h-3 w-3" />
-                    +{stats.revenue.change}%
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownIcon className="h-3 w-3" />
-                    {stats.revenue.change}%
-                  </>
-                )} from last month
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>

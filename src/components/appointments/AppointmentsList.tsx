@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { emailService } from '@/lib/email';
 import { NotesModal } from "./NotesModal";
+import { UpdatePriceModal } from './UpdatePriceModal';
 
 interface Appointment {
   id: string;
@@ -126,6 +127,7 @@ export function AppointmentsList({
   } | null>(null);
   const [startingCall, setStartingCall] = useState<string | null>(null);
   const [copyingLink, setCopyingLink] = useState<string | null>(null);
+  const [priceUpdateAppointment, setPriceUpdateAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     checkAndUpdateCompletedAppointments(appointments);
@@ -531,6 +533,13 @@ export function AppointmentsList({
                                       Reschedule
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
+                                      onClick={() => setPriceUpdateAppointment(appointment)}
+                                      className="text-blue-600"
+                                    >
+                                      <CreditCard className="h-4 w-4 mr-2" />
+                                      Update Price
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
                                       onClick={() => navigate(`/clients/${appointment.client_id}`)}
                                       className="text-blue-600"
                                     >
@@ -693,6 +702,13 @@ export function AppointmentsList({
                           Reschedule
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          onClick={() => setPriceUpdateAppointment(appointment)}
+                          className="text-blue-600"
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Update Price
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
                           onClick={() => navigate(`/clients/${appointment.client_id}`)}
                           className="text-blue-600"
                         >
@@ -828,6 +844,16 @@ export function AppointmentsList({
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+      />
+
+      <UpdatePriceModal
+        open={priceUpdateAppointment !== null}
+        onOpenChange={(open) => {
+          if (!open) setPriceUpdateAppointment(null);
+        }}
+        appointmentId={priceUpdateAppointment?.id || ''}
+        currentPrice={priceUpdateAppointment?.price || 0}
+        onUpdate={onUpdate || (() => {})}
       />
     </div>
   );

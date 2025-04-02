@@ -87,8 +87,8 @@ export default function Schedule() {
 
   return (
     <div className="h-[calc(100vh-9rem)] flex flex-col">
-      {/* Header with navigation */}
-      <div className="flex items-center p-4 border-b">
+      {/* Fixed header */}
+      <div className="flex items-center p-4 border-b bg-background sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <button onClick={handlePrevWeek} className="p-1 hover:bg-gray-100 rounded">
             <ChevronLeft className="w-5 h-5" />
@@ -102,72 +102,83 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-8 h-full">
-          {/* Time column */}
-          <div className="border-r">
-            <div className="h-12 border-b"></div> {/* Empty corner */}
-            {timeSlots.map(time => (
-              <div key={time} className="h-16 border-b px-2 text-sm text-gray-500">
-                {time}
+      {/* Calendar container */}
+      <div className="flex-1 flex flex-col min-h-0"> {/* Add min-h-0 to allow flex child to shrink */}
+        {/* Fixed day header */}
+        <div className="grid grid-cols-8 border-b bg-background sticky top-0 z-10">
+          {/* Empty corner */}
+          <div className="h-12 border-r"></div>
+          
+          {/* Days row */}
+          {weekDays.map((day, index) => (
+            <div key={index} className="h-12 border-r p-2 text-center">
+              <div className="text-sm text-gray-500">{format(day, 'EEE')}</div>
+              <div className={clsx(
+                "inline-flex items-center justify-center w-8 h-8 rounded-full",
+                isSameDay(day, new Date()) && "bg-blue-600 text-white"
+              )}>
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Scrollable time slots */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="grid grid-cols-8">
+            {/* Time column */}
+            <div className="border-r">
+              {timeSlots.map(time => (
+                <div key={time} className="h-16 border-b px-2 text-sm text-gray-500">
+                  {time}
+                </div>
+              ))}
+            </div>
+
+            {/* Days columns */}
+            {weekDays.map((day, index) => (
+              <div key={index} className="border-r">
+                {timeSlots.map(time => {
+                  const appointments = getAppointmentsForDateAndTime(day, time);
+                  return (
+                    <div 
+                      key={`${day}-${time}`} 
+                      className="h-16 border-b relative group"
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams);
+                        params.set('modal', 'create');
+                        params.set('date', formatDateForCreateModal(day, time));
+                        setSearchParams(params);
+                      }}
+                    >
+                      {appointments.map(apt => (
+                        <div
+                          key={apt.id}
+                          className={clsx(
+                            "absolute inset-x-1 rounded p-2 text-sm text-white",
+                            apt.session_type === 'video' ? 'bg-blue-600' : 'bg-blue-300',
+                            "cursor-pointer z-10"
+                          )}
+                          style={{
+                            top: '4px',
+                            height: `calc(${apt.session_length / 30} * 4rem - 8px)`
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedAppointment(apt);
+                          }}
+                        >
+                          {apt.client_name} - {apt.session_type === 'video' ? 'Video' : 'In-Person'}
+                        </div>
+                      ))}
+                      <div className="absolute inset-0 group-hover:bg-violet-50 transition-colors pointer-events-none"></div>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
-
-          {/* Days columns */}
-          {weekDays.map((day, index) => (
-            <div key={index} className="border-r">
-              <div className="h-12 border-b p-2 text-center">
-                <div className="text-sm text-gray-500">{format(day, 'EEE')}</div>
-                <div className={clsx(
-                  "inline-flex items-center justify-center w-8 h-8 rounded-full",
-                  isSameDay(day, new Date()) && "bg-blue-600 text-white"
-                )}>
-                  {format(day, 'd')}
-                </div>
-              </div>
-              {timeSlots.map(time => {
-                const appointments = getAppointmentsForDateAndTime(day, time);
-                return (
-                  <div 
-                    key={`${day}-${time}`} 
-                    className="h-16 border-b relative group"
-                    onClick={() => {
-                      const params = new URLSearchParams(searchParams);
-                      params.set('modal', 'create');
-                      params.set('date', formatDateForCreateModal(day, time));
-                      setSearchParams(params);
-                    }}
-                  >
-                    {appointments.map(apt => (
-                      <div
-                        key={apt.id}
-                        className={clsx(
-                          "absolute inset-x-1 rounded p-2 text-sm text-white",
-                          apt.session_type === 'video' ? 'bg-blue-600' : 'bg-blue-300',
-                          "cursor-pointer z-10" // Add z-index to ensure it's above the time slot
-                        )}
-                        style={{
-                          top: '4px',
-                          height: `calc(${apt.session_length / 30} * 4rem - 8px)`
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSelectedAppointment(apt);
-                        }}
-                      >
-                        {apt.client_name} - {apt.session_type === 'video' ? 'Video' : 'In-Person'}
-                      </div>
-                    ))}
-                    {/* Move the hover effect div below appointments but keep pointer events */}
-                    <div className="absolute inset-0 group-hover:bg-violet-50 transition-colors pointer-events-none"></div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
         </div>
       </div>
 

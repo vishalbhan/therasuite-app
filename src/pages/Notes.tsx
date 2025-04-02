@@ -7,6 +7,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { NotesModal } from '@/components/appointments/NotesModal';
+import React from 'react';
 
 interface Note {
   id: string;
@@ -24,6 +25,7 @@ export default function Notes() {
     appointmentId: string;
     notes: string;
   } | null>(null);
+  const [selectedClient, setSelectedClient] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,6 +55,12 @@ export default function Notes() {
     fetchNotes();
   }, []);
 
+  // Filter notes based on selected client
+  const filteredNotes = React.useMemo(() => {
+    if (!selectedClient) return notes;
+    return notes.filter(note => note.client_name === selectedClient);
+  }, [notes, selectedClient]);
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -70,7 +78,21 @@ export default function Notes() {
 
   return (
     <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
-      <h1 className="text-2xl font-bold mb-6">Session Notes</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Session Notes</h1>
+        <select
+          value={selectedClient}
+          onChange={(e) => setSelectedClient(e.target.value)}
+          className="w-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <option value="">All Clients</option>
+          {Array.from(new Set(notes.map(note => note.client_name))).map(client => (
+            <option key={client} value={client}>
+              {client}
+            </option>
+          ))}
+        </select>
+      </div>
       
       {/* Desktop Table View */}
       <div className="hidden md:block rounded-md border">
@@ -84,7 +106,7 @@ export default function Notes() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {notes.map((note) => (
+            {filteredNotes.map((note) => (
               <tr key={note.id} className="hover:bg-gray-50">
                 <td className="py-4 px-4">
                   <div className="font-medium">{note.client_name}</div>
@@ -128,7 +150,7 @@ export default function Notes() {
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
-        {notes.map((note) => (
+        {filteredNotes.map((note) => (
           <div 
             key={note.id}
             className="bg-white rounded-lg border shadow-sm p-4 space-y-4"
