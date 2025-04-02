@@ -20,6 +20,7 @@ interface Appointment {
   session_date: string;
   session_length: number;
   notes?: string;
+  price?: number;
 }
 
 interface Position {
@@ -40,6 +41,8 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 20, y: 20 });
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [callEndTime, setCallEndTime] = useState<Date | null>(null);
 
   const handleMouseDown = (e: MouseEvent) => {
     setIsDragging(true);
@@ -110,8 +113,14 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           },
         });
 
+        // Set call start time when joining
+        dyteClient.self.on('roomJoined', () => {
+          setCallStartTime(new Date());
+        });
+
         // Update the meeting state change listener
         dyteClient.self.on('roomLeft', () => {
+          setCallEndTime(new Date());
           setShowNotesModal(true);
           setHasCallEnded(true);
           setShowNotesSidebar(false);
@@ -132,6 +141,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
     return () => {
       if (meeting) {
         meeting.self.removeAllListeners('roomLeft');
+        meeting.self.removeAllListeners('roomJoined');
       }
     };
   }, [appointmentId]);
@@ -276,6 +286,9 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         onOpenChange={setShowNotesModal}
         appointmentId={appointmentId}
         existingNotes={notes}
+        callStartTime={callStartTime}
+        callEndTime={callEndTime}
+        currentPrice={appointment?.price || 0}
         onSuccess={() => {
           window.location.href = '/dashboard';
         }}
