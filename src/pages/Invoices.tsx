@@ -4,8 +4,14 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Appointment {
   id: string;
@@ -467,42 +473,100 @@ export default function Invoices() {
                       </td>
                       <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleSendInvoice(appointment)}
-                            disabled={loadingInvoices[appointment.id]}
-                          >
-                            {loadingInvoices[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="h-4 w-4 mr-0.5" />
-                                Send Invoice
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleSendInvoice(appointment)}
+                              disabled={loadingInvoices[appointment.id]}
+                            >
+                              {loadingInvoices[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 mr-0.5" />
+                                  Send Invoice
+                                </>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'invoice_sent' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleMarkAsPaid(appointment)}
-                            disabled={loadingPayments[appointment.id]}
-                          >
-                            {loadingPayments[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Updating...
-                              </>
-                            ) : (
-                              'Mark as Paid'
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleMarkAsPaid(appointment)}
+                              disabled={loadingPayments[appointment.id]}
+                            >
+                              {loadingPayments[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Updating...
+                                </>
+                              ) : (
+                                'Mark as Paid'
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'received' && appointment.payment_date ? (
                           <div className="text-sm text-gray-500">
                             <div>Received on</div>
@@ -583,42 +647,100 @@ export default function Invoices() {
                       </td>
                       <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleSendInvoice(appointment)}
-                            disabled={loadingInvoices[appointment.id]}
-                          >
-                            {loadingInvoices[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="h-4 w-4 mr-0.5" />
-                                Send Invoice
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleSendInvoice(appointment)}
+                              disabled={loadingInvoices[appointment.id]}
+                            >
+                              {loadingInvoices[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 mr-0.5" />
+                                  Send Invoice
+                                </>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'invoice_sent' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleMarkAsPaid(appointment)}
-                            disabled={loadingPayments[appointment.id]}
-                          >
-                            {loadingPayments[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Updating...
-                              </>
-                            ) : (
-                              'Mark as Paid'
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleMarkAsPaid(appointment)}
+                              disabled={loadingPayments[appointment.id]}
+                            >
+                              {loadingPayments[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Updating...
+                                </>
+                              ) : (
+                                'Mark as Paid'
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'received' && appointment.payment_date ? (
                           <div className="text-sm text-gray-500">
                             <div>Received on</div>
@@ -699,42 +821,100 @@ export default function Invoices() {
                       </td>
                       <td className="py-4 px-4 text-right w-[170px]">
                         {appointment.payment_status === 'pending' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleSendInvoice(appointment)}
-                            disabled={loadingInvoices[appointment.id]}
-                          >
-                            {loadingInvoices[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="h-4 w-4 mr-0.5" />
-                                Send Invoice
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleSendInvoice(appointment)}
+                              disabled={loadingInvoices[appointment.id]}
+                            >
+                              {loadingInvoices[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 mr-0.5" />
+                                  Send Invoice
+                                </>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'invoice_sent' ? (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => handleMarkAsPaid(appointment)}
-                            disabled={loadingPayments[appointment.id]}
-                          >
-                            {loadingPayments[appointment.id] ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs mr-0.5" />
-                                Updating...
-                              </>
-                            ) : (
-                              'Mark as Paid'
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                              onClick={() => handleMarkAsPaid(appointment)}
+                              disabled={loadingPayments[appointment.id]}
+                            >
+                              {loadingPayments[appointment.id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs mr-0.5" />
+                                  Updating...
+                                </>
+                              ) : (
+                                'Mark as Paid'
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleMarkAsPaid(appointment)}
+                                  disabled={loadingPayments[appointment.id]}
+                                  className="text-blue-600"
+                                >
+                                  {loadingPayments[appointment.id] ? (
+                                    <>
+                                      <span className="loading loading-spinner loading-xs mr-2" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    'Mark as Paid'
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ) : appointment.payment_status === 'received' && appointment.payment_date ? (
                           <div className="text-sm text-gray-500">
                             <div>Received on</div>

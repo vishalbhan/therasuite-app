@@ -10,7 +10,8 @@ import { AppointmentDetailsModal } from '@/components/appointments/AppointmentDe
 import { Database } from '@/types/supabase';
 import { EditAppointmentModal } from '@/components/appointments/EditAppointmentModal';
 import { Button } from '@/components/ui/button';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, XCircle } from 'lucide-react';
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface Appointment {
   id: string;
@@ -36,6 +37,7 @@ export default function Schedule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   
   // Generate week days starting from current date
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
@@ -87,6 +89,26 @@ export default function Schedule() {
 
   const handleNextWeek = () => {
     setCurrentDate(prev => addDays(prev, 7));
+  };
+
+  const handleCancelAppointment = async () => {
+    try {
+      if (!selectedAppointment) return;
+
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'cancelled' })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      toast.success("Appointment cancelled successfully");
+      setShowCancelModal(false);
+      setSelectedAppointment(null);
+      window.location.reload(); // Refresh to show updated status
+    } catch (error) {
+      toast.error("Failed to cancel appointment");
+    }
   };
 
   return (
@@ -193,17 +215,35 @@ export default function Schedule() {
           if (!open) setSelectedAppointment(null);
         }}
         actions={
-          <Button
-            onClick={() => {
-              setShowEditModal(true);
-            }}
-            variant="outline"
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            <CalendarPlus className="h-4 w-4 mr-2" />
-            Reschedule
-          </Button>
+          <div className="space-x-2">
+            <Button
+              onClick={() => setShowCancelModal(true)}
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Appointment
+            </Button>
+            <Button
+              onClick={() => setShowEditModal(true)}
+              variant="outline"
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Reschedule
+            </Button>
+          </div>
         }
+      />
+
+      <ConfirmModal
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        title="Cancel Appointment"
+        description="Are you sure you want to cancel this appointment? This action cannot be undone."
+        confirmText="Yes, cancel appointment"
+        cancelText="No, keep appointment"
+        onConfirm={handleCancelAppointment}
       />
 
       <EditAppointmentModal
