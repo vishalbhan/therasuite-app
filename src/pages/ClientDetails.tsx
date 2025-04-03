@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft, Eye, Save, Plus, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Eye, Save, Plus, ChevronRight, Trash2 } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 
 // Update the Database type definition to include the new fields
 type Database = {
@@ -85,8 +86,10 @@ export default function ClientDetails() {
   } | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [diagnosis, setDiagnosis] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
   useEffect(() => {
     const fetchClientDetails = async () => {
@@ -134,16 +137,23 @@ export default function ClientDetails() {
     if (client) {
       setPhoneNumber(client.phone_number || '');
       setDiagnosis(client.diagnosis || '');
+      setEmail(client.email || '');
     }
   }, [client]);
 
   const saveClientDetails = async () => {
     try {
+      if (!email || !/\S+@\S+\.\S+/.test(email)) {
+        toast.error('Please enter a valid email address.');
+        return;
+      }
+
       const { error } = await supabase
         .from('clients')
         .update({
           phone_number: phoneNumber,
-          diagnosis: diagnosis
+          diagnosis: diagnosis,
+          email: email
         })
         .eq('id', clientId);
         
@@ -154,7 +164,8 @@ export default function ClientDetails() {
         setClient({
           ...client,
           phone_number: phoneNumber,
-          diagnosis: diagnosis
+          diagnosis: diagnosis,
+          email: email
         });
       }
       
@@ -163,6 +174,27 @@ export default function ClientDetails() {
     } catch (error) {
       toast.error('Failed to update client details');
       console.error(error);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!client) return;
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', client.id);
+
+      if (error) throw error;
+
+      toast.success('Client deleted successfully');
+      setShowDeleteConfirmModal(false);
+      navigate('/clients');
+    } catch (error) {
+      toast.error('Failed to delete client. They might have associated appointments.');
+      console.error(error);
+      setShowDeleteConfirmModal(false);
     }
   };
 
@@ -210,9 +242,28 @@ export default function ClientDetails() {
           <h1 className="text-2xl font-bold">{client.name}</h1>
           <p className="text-gray-500">{client.email}</p>
         </div>
-        <div className="ml-auto">
-          {/* Desktop button */}
-          <Button 
+        <div className="ml-auto flex items-center gap-2">
+          {/* Delete Button - Desktop */}
+          <Button
+            variant="outline"
+            className="hidden sm:flex text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => setShowDeleteConfirmModal(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" />
+            Delete Client
+          </Button>
+          {/* Delete Button - Mobile */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="sm:hidden text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => setShowDeleteConfirmModal(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+
+          {/* Create Appointment Button - Desktop */}
+          <Button
             onClick={() => {
               const params = new URLSearchParams(searchParams);
               params.set('modal', 'create');
@@ -220,10 +271,10 @@ export default function ClientDetails() {
             }}
             className="hidden sm:flex"
           >
-            Create New Appointment
+            <Plus className="h-4 w-4 mr-1.5" />
+            New Appointment
           </Button>
-
-          {/* Mobile button */}
+          {/* Create Appointment Button - Mobile */}
           <Button
             onClick={() => {
               const params = new URLSearchParams(searchParams);
@@ -275,6 +326,19 @@ export default function ClientDetails() {
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 disabled={!isEditing}
                 placeholder="Enter phone number"
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter email address"
                 className="mt-1"
               />
             </div>
@@ -401,6 +465,17 @@ export default function ClientDetails() {
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+      />
+
+      <ConfirmModal
+        open={showDeleteConfirmModal}
+        onOpenChange={setShowDeleteConfirmModal}
+        title="Delete Client"
+        description={`Are you sure you want to delete ${client?.name}? This action cannot be undone and may delete associated data.`}
+        confirmText="Yes, delete client"
+        cancelText="Cancel"
+        onConfirm={handleDeleteClient}
+        variant="destructive"
       />
     </div>
   );
