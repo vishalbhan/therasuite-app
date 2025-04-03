@@ -247,7 +247,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Today's Sessions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">{stats.todaysSessions.total}</div>
+            <div className="text-3xl font-bold text-blue-800">{stats.todaysSessions.total}</div>
             <p className="text-xs text-muted-foreground">
               {stats.todaysSessions.remaining} remaining
             </p>
@@ -259,7 +259,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Weekly Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">{stats.weeklyHours.total}</div>
+            <div className="text-3xl font-bold text-blue-800">{stats.weeklyHours.total}</div>
           </CardContent>
         </Card>
 
@@ -277,8 +277,8 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">Revenue this month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">
-              ₹{stats.revenue.total.toLocaleString()}
+            <div className="text-3xl font-bold text-green-600">
+              {stats.revenue.total.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 })}
             </div>
           </CardContent>
         </Card>
