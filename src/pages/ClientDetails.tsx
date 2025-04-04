@@ -87,6 +87,7 @@ export default function ClientDetails() {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [diagnosis, setDiagnosis] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [clientName, setClientName] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -135,6 +136,7 @@ export default function ClientDetails() {
 
   useEffect(() => {
     if (client) {
+      setClientName(client.name || '');
       setPhoneNumber(client.phone_number || '');
       setDiagnosis(client.diagnosis || '');
       setEmail(client.email || '');
@@ -142,15 +144,20 @@ export default function ClientDetails() {
   }, [client]);
 
   const saveClientDetails = async () => {
-    try {
-      if (!email || !/\S+@\S+\.\S+/.test(email)) {
-        toast.error('Please enter a valid email address.');
-        return;
-      }
+    if (!clientName.trim()) {
+      toast.error('Client name cannot be empty.');
+      return;
+    }
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
 
+    try {
       const { error } = await supabase
         .from('clients')
         .update({
+          name: clientName.trim(),
           phone_number: phoneNumber,
           diagnosis: diagnosis,
           email: email
@@ -163,6 +170,7 @@ export default function ClientDetails() {
       if (client) {
         setClient({
           ...client,
+          name: clientName.trim(),
           phone_number: phoneNumber,
           diagnosis: diagnosis,
           email: email
@@ -239,8 +247,8 @@ export default function ClientDetails() {
           {client.initials}
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{client.name}</h1>
-          <p className="text-gray-500">{client.email}</p>
+          <h1 className="text-2xl font-bold">{isEditing ? clientName : client?.name}</h1>
+          <p className="text-gray-500">{isEditing ? email : client?.email}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* Delete Button - Desktop */}
@@ -319,13 +327,13 @@ export default function ClientDetails() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
-                id="phone"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                id="name"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
                 disabled={!isEditing}
-                placeholder="Enter phone number"
+                placeholder="Enter client name"
                 className="mt-1"
               />
             </div>
@@ -339,6 +347,18 @@ export default function ClientDetails() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={!isEditing}
                 placeholder="Enter email address"
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter phone number"
                 className="mt-1"
               />
             </div>
