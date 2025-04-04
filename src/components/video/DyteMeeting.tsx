@@ -289,6 +289,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         callStartTime={callStartTime}
         callEndTime={callEndTime}
         currentPrice={appointment?.price || 0}
+        hideSessionDetails={false}
         onSuccess={() => {
           window.location.href = '/dashboard';
         }}

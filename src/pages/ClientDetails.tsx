@@ -379,9 +379,9 @@ export default function ClientDetails() {
       </Card>
 
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 md:gap-0">
           <h2 className="text-xl font-semibold">Appointment History</h2>
-          <div className="flex items-center bg-primary/5 rounded-lg p-1">
+          <div className="flex items-center bg-primary/5 rounded-lg p-1 self-start md:self-center">
             <Button
               variant="ghost"
               size="icon"
@@ -390,7 +390,7 @@ export default function ClientDetails() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <span className="text-lg font-medium px-4 text-primary">
+            <span className="text-lg font-medium px-4 text-primary whitespace-nowrap">
               {format(currentDate, 'MMMM yyyy')}
             </span>
             <Button

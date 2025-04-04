@@ -16,6 +16,7 @@ interface Note {
   session_date: string;
   notes: string;
   session_type: 'video' | 'in-person';
+  price: number;
 }
 
 export default function Notes() {
@@ -24,6 +25,7 @@ export default function Notes() {
   const [viewingNotes, setViewingNotes] = useState<{
     appointmentId: string;
     notes: string;
+    price: number;
   } | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const navigate = useNavigate();
@@ -36,7 +38,7 @@ export default function Notes() {
 
         const { data, error } = await supabase
           .from('appointments')
-          .select('id, client_name, client_id, session_date, notes, session_type')
+          .select('id, client_name, client_id, session_date, notes, session_type, price')
           .eq('therapist_id', user.id)
           .not('notes', 'is', null)
           .not('notes', 'eq', '')
@@ -125,12 +127,13 @@ export default function Notes() {
                     size="sm"
                     onClick={() => setViewingNotes({
                       appointmentId: note.id,
-                      notes: note.notes
+                      notes: note.notes,
+                      price: note.price
                     })}
                     className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
                   >
                     <Eye className="h-4 w-4 mr-0.5" />
-                    Edit Note
+                    View Note
                   </Button>
                   <Button
                     variant="ghost"
@@ -172,12 +175,13 @@ export default function Notes() {
                 size="sm"
                 onClick={() => setViewingNotes({
                   appointmentId: note.id,
-                  notes: note.notes
+                  notes: note.notes,
+                  price: note.price
                 })}
                 className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
               >
                 <Eye className="h-4 w-4 mr-1.5" />
-                Edit Note
+                View Note
               </Button>
               <Button
                 variant="ghost"
@@ -198,6 +202,30 @@ export default function Notes() {
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+        currentPrice={viewingNotes?.price || 0}
+        callStartTime={null}
+        callEndTime={null}
+        hideSessionDetails={true}
+        onSuccess={() => {
+          const fetchNotes = async () => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+              const { data, error } = await supabase
+                .from('appointments')
+                .select('id, client_name, client_id, session_date, notes, session_type, price')
+                .eq('therapist_id', user.id)
+                .not('notes', 'is', null)
+                .not('notes', 'eq', '')
+                .order('session_date', { ascending: false });
+              if (error) throw error;
+              setNotes(data as Note[]);
+            } catch (error) {
+              toast.error("Error refreshing notes");
+            }
+          };
+          fetchNotes();
+        }}
       />
     </div>
   );

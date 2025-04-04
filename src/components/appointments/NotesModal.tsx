@@ -17,6 +17,7 @@ interface NotesModalProps {
   callStartTime: Date | null;
   callEndTime: Date | null;
   currentPrice?: number;
+  hideSessionDetails?: boolean;
   onSuccess?: () => void;
 }
 
@@ -28,38 +29,47 @@ export function NotesModal({
   callStartTime,
   callEndTime,
   currentPrice = 0,
+  hideSessionDetails = false,
   onSuccess,
 }: NotesModalProps) {
   const [notes, setNotes] = useState(existingNotes);
-  const [finalPrice, setFinalPrice] = useState(currentPrice.toString());
+  const [finalPrice, setFinalPrice] = useState(
+    hideSessionDetails ? '' : currentPrice.toString()
+  );
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { currency } = useCurrency();
 
-  // Update notes and price when they change
   useEffect(() => {
     setNotes(existingNotes);
-    setFinalPrice(currentPrice.toString());
-  }, [existingNotes, currentPrice]);
+    if (!hideSessionDetails) {
+      setFinalPrice(currentPrice.toString());
+    }
+  }, [existingNotes, currentPrice, hideSessionDetails, open]);
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
       
+      const updatePayload: { notes: string; status?: string; price?: number } = {
+        notes,
+      };
+
+      if (!hideSessionDetails) {
+        updatePayload.status = 'completed';
+        updatePayload.price = parseFloat(finalPrice) || currentPrice;
+      }
+
       const { error } = await supabase
         .from("appointments")
-        .update({ 
-          notes,
-          status: 'completed',
-          price: parseFloat(finalPrice) || currentPrice // Use current price if parsing fails
-        })
+        .update(updatePayload)
         .eq("id", appointmentId);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Session details saved successfully",
+        description: hideSessionDetails ? "Note updated successfully" : "Session details saved successfully",
       });
 
       onSuccess?.();
@@ -67,7 +77,7 @@ export function NotesModal({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to save session details",
+        description: hideSessionDetails ? "Failed to update note" : "Failed to save session details",
         variant: "destructive",
       });
     } finally {
@@ -75,7 +85,6 @@ export function NotesModal({
     }
   };
 
-  // Calculate call duration
   const getCallDuration = () => {
     if (!callStartTime || !callEndTime) return 'N/A';
     const duration = Math.round((callEndTime.getTime() - callStartTime.getTime()) / 1000 / 60);
@@ -86,51 +95,55 @@ export function NotesModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="mb-4">Session Notes</DialogTitle>
+          <DialogTitle className="mb-4">
+            {hideSessionDetails ? "View/Edit Note" : "Session Notes"}
+          </DialogTitle>
         </DialogHeader>
 
-        {/* Add call timing details */}
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg text-sm">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="font-medium text-gray-500">Start Time</div>
-              <div>{callStartTime ? format(callStartTime, 'h:mm a') : 'N/A'}</div>
-            </div>
-            <div>
-              <div className="font-medium text-gray-500">End Time</div>
-              <div>{callEndTime ? format(callEndTime, 'h:mm a') : 'N/A'}</div>
-            </div>
-            <div>
-              <div className="font-medium text-gray-500">Duration</div>
-              <div>{getCallDuration()}</div>
+        {!hideSessionDetails && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg text-sm">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="font-medium text-gray-500">Start Time</div>
+                <div>{callStartTime ? format(callStartTime, 'h:mm a') : 'N/A'}</div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-500">End Time</div>
+                <div>{callEndTime ? format(callEndTime, 'h:mm a') : 'N/A'}</div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-500">Duration</div>
+                <div>{getCallDuration()}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
-          {/* Add price input */}
-          <div>
-            <Label htmlFor="final-price">Final Price</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5">
-                {currency === 'USD' ? '$' : 
-                 currency === 'EUR' ? '€' : 
-                 currency === 'GBP' ? '£' : 
-                 currency === 'AUD' ? 'A$' : 
-                 currency === 'CAD' ? 'C$' : 
-                 '₹'}
-              </span>
-              <Input
-                id="final-price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={finalPrice}
-                onChange={(e) => setFinalPrice(e.target.value)}
-                className="pl-7"
-              />
+          {!hideSessionDetails && (
+            <div>
+              <Label htmlFor="final-price">Final Price</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5">
+                  {currency === 'USD' ? '$' : 
+                   currency === 'EUR' ? '€' : 
+                   currency === 'GBP' ? '£' : 
+                   currency === 'AUD' ? 'A$' : 
+                   currency === 'CAD' ? 'C$' : 
+                   '₹'}
+                </span>
+                <Input
+                  id="final-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={finalPrice}
+                  onChange={(e) => setFinalPrice(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <Textarea
             placeholder="Enter your session notes here..."
@@ -147,7 +160,7 @@ export function NotesModal({
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Notes"}
+              {isSaving ? "Saving..." : (hideSessionDetails ? "Save Note" : "Save Details")}
             </Button>
           </div>
         </div>
