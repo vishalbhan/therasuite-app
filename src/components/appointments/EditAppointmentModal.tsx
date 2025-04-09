@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -74,6 +74,28 @@ export function EditAppointmentModal({
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  
+  // Check for stored values from drag and drop
+  useEffect(() => {
+    if (open && appointment) {
+      const storedValues = sessionStorage.getItem('editAppointmentValues');
+      if (storedValues) {
+        try {
+          const values = JSON.parse(storedValues);
+          
+          // Update form with the stored values
+          form.setValue('session_date', new Date(values.session_date));
+          form.setValue('session_time', values.session_time);
+          form.setValue('session_length', String(values.session_length) as "30" | "60" | "90" | "120");
+          
+          // Clear the stored values
+          sessionStorage.removeItem('editAppointmentValues');
+        } catch (error) {
+          console.error('Error parsing stored values:', error);
+        }
+      }
+    }
+  }, [open, appointment]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

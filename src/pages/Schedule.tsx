@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, DragEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
@@ -21,6 +21,7 @@ interface Appointment {
   session_type: 'video' | 'in_person';
   status: 'scheduled' | 'completed' | 'cancelled';
   therapist_id: string;
+  notes?: string;
 }
 
 // Add this helper function to format date-time for the create modal
@@ -39,6 +40,8 @@ export default function Schedule() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [draggedAppointment, setDraggedAppointment] = useState<Appointment | null>(null);
+  const [dragTarget, setDragTarget] = useState<{ date: Date, time: string } | null>(null);
   
   // Generate week days starting from current date
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
@@ -132,6 +135,72 @@ export default function Schedule() {
     }
   };
 
+  // Handle drag start
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, appointment: Appointment) => {
+    setDraggedAppointment(appointment);
+    
+    // Create a ghost image for dragging
+    const ghost = document.createElement('div');
+    ghost.classList.add('bg-blue-600', 'text-white', 'p-2', 'rounded', 'opacity-70');
+    ghost.textContent = appointment.client_name;
+    ghost.style.width = '150px';
+    ghost.style.position = 'absolute';
+    ghost.style.top = '-1000px';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 75, 20);
+    
+    // Clean up the ghost element after drag starts
+    setTimeout(() => {
+      document.body.removeChild(ghost);
+    }, 0);
+  };
+
+  // Handle drag over
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, date: Date, time: string) => {
+    e.preventDefault();
+    setDragTarget({ date, time });
+  };
+
+  // Handle drop
+  const handleDrop = (e: DragEvent<HTMLDivElement>, date: Date, time: string) => {
+    e.preventDefault();
+    
+    if (!draggedAppointment) return;
+    
+    // Open edit modal with the new date and time
+    setSelectedAppointment(draggedAppointment);
+    
+    // Format the date and time for the edit modal
+    const dropDate = new Date(date);
+    const [hours, minutes] = time.split(':');
+    dropDate.setHours(parseInt(hours), parseInt(minutes));
+    
+    // Set the form values for the edit modal
+    const formValues = {
+      session_date: dropDate,
+      session_time: time,
+      session_length: String(draggedAppointment.session_length) as "30" | "60" | "90" | "120",
+      notes: draggedAppointment.notes || ""
+    };
+    
+    // Store the values to be used when the edit modal opens
+    sessionStorage.setItem('editAppointmentValues', JSON.stringify({
+      session_date: dropDate.toISOString(),
+      session_time: time,
+      session_length: draggedAppointment.session_length,
+    }));
+    
+    setShowEditModal(true);
+    setDraggedAppointment(null);
+    setDragTarget(null);
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedAppointment(null);
+    setDragTarget(null);
+  };
+
   return (
     <div className="h-[calc(100vh-9rem)] flex flex-col">
       {/* Fixed header */}
@@ -193,13 +262,20 @@ export default function Schedule() {
                   const isCurrentTimeSlot = isSameDay(day, new Date()) && 
                     time === format(new Date(), 'HH:mm');
                   
+                  const isDropTarget = dragTarget && 
+                    isSameDay(dragTarget.date, day) && 
+                    dragTarget.time === time;
+                  
                   return (
                     <div 
                       key={`${day}-${time}`} 
                       className={clsx(
                         "h-16 border-b relative group",
-                        isCurrentTimeSlot && "bg-amber-50"
+                        isCurrentTimeSlot && "bg-amber-50",
+                        isDropTarget && "bg-blue-100"
                       )}
+                      onDragOver={(e) => handleDragOver(e, day, time)}
+                      onDrop={(e) => handleDrop(e, day, time)}
                       onClick={() => {
                         const params = new URLSearchParams(searchParams);
                         params.set('modal', 'create');
@@ -217,12 +293,16 @@ export default function Schedule() {
                           className={clsx(
                             "absolute inset-x-1 rounded p-2 text-sm text-white",
                             apt.session_type === 'video' ? 'bg-blue-600' : 'bg-blue-300',
-                            "cursor-pointer z-10"
+                            "cursor-pointer z-10",
+                            draggedAppointment?.id === apt.id && "opacity-50"
                           )}
                           style={{
                             top: '4px',
                             height: `calc(${apt.session_length / 30} * 4rem - 8px)`
                           }}
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(e, apt)}
+                          onDragEnd={handleDragEnd}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
