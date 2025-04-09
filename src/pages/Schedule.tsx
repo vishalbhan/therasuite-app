@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
@@ -38,6 +38,7 @@ export default function Schedule() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Generate week days starting from current date
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
@@ -73,6 +74,26 @@ export default function Schedule() {
     };
 
     fetchAppointments();
+  }, []);
+
+  useEffect(() => {
+    const scrollToCurrentTime = () => {
+      if (!scrollContainerRef.current) return;
+      
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      const hoursSince6am = currentHour - 6;
+      const halfHourIntervals = hoursSince6am * 2 + (currentMinute >= 30 ? 1 : 0);
+      
+      const scrollPosition = halfHourIntervals * 64;
+      
+      scrollContainerRef.current.scrollTop = Math.max(0, scrollPosition - 128);
+    };
+    
+    const timer = setTimeout(scrollToCurrentTime, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const getAppointmentsForDateAndTime = (date: Date, timeSlot: string) => {
@@ -150,7 +171,10 @@ export default function Schedule() {
         </div>
 
         {/* Scrollable time slots */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+        >
           <div className="grid grid-cols-8">
             {/* Time column */}
             <div className="border-r">
@@ -166,10 +190,16 @@ export default function Schedule() {
               <div key={index} className="border-r">
                 {timeSlots.map(time => {
                   const appointments = getAppointmentsForDateAndTime(day, time);
+                  const isCurrentTimeSlot = isSameDay(day, new Date()) && 
+                    time === format(new Date(), 'HH:mm');
+                  
                   return (
                     <div 
                       key={`${day}-${time}`} 
-                      className="h-16 border-b relative group"
+                      className={clsx(
+                        "h-16 border-b relative group",
+                        isCurrentTimeSlot && "bg-amber-50"
+                      )}
                       onClick={() => {
                         const params = new URLSearchParams(searchParams);
                         params.set('modal', 'create');
@@ -177,6 +207,10 @@ export default function Schedule() {
                         setSearchParams(params);
                       }}
                     >
+                      {isCurrentTimeSlot && (
+                        <div className="absolute left-0 right-0 h-0.5 bg-red-500 z-20"></div>
+                      )}
+                      
                       {appointments.map(apt => (
                         <div
                           key={apt.id}
