@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
   DropdownMenu,
@@ -381,7 +381,10 @@ export default function Invoices() {
                       Updating...
                     </>
                   ) : (
-                    'Mark as Paid'
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </>
                   )}
                 </DropdownMenuItem>
               )}
@@ -398,7 +401,10 @@ export default function Invoices() {
                          Resending...
                        </>
                      ) : (
-                       'Resend Invoice'
+                       <>
+                         <Send className="h-4 w-4 mr-2" />
+                         Resend Invoice
+                       </>
                      )}
                    </DropdownMenuItem>
                    <DropdownMenuItem
@@ -412,7 +418,10 @@ export default function Invoices() {
                          Updating...
                        </>
                      ) : (
-                       'Mark as Paid'
+                       <>
+                         <CheckCircle className="h-4 w-4 mr-2" />
+                         Mark as Paid
+                       </>
                      )}
                    </DropdownMenuItem>
                  </>
@@ -429,7 +438,10 @@ export default function Invoices() {
                       Updating...
                     </>
                   ) : (
-                    'Mark as not paid'
+                    <>
+                      <Undo2 className="h-4 w-4 mr-2" />
+                      Mark as not paid
+                    </>
                   )}
                 </DropdownMenuItem>
               )}
@@ -668,7 +680,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as Paid'
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Mark as Paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
@@ -685,7 +700,10 @@ export default function Invoices() {
                                         Resending...
                                       </>
                                     ) : (
-                                      'Resend Invoice'
+                                      <>
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Resend Invoice
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -699,7 +717,10 @@ export default function Invoices() {
                                         Updating...
                                       </>
                                     ) : (
-                                      'Mark as Paid'
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                 </>
@@ -716,7 +737,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as not paid'
+                                    <>
+                                      <Undo2 className="h-4 w-4 mr-2" />
+                                      Mark as not paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
@@ -866,7 +890,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as Paid'
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Mark as Paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
@@ -883,7 +910,10 @@ export default function Invoices() {
                                         Resending...
                                       </>
                                     ) : (
-                                      'Resend Invoice'
+                                      <>
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Resend Invoice
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -897,7 +927,10 @@ export default function Invoices() {
                                         Updating...
                                       </>
                                     ) : (
-                                      'Mark as Paid'
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                 </>
@@ -914,7 +947,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as not paid'
+                                    <>
+                                      <Undo2 className="h-4 w-4 mr-2" />
+                                      Mark as not paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
@@ -1064,7 +1100,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as Paid'
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Mark as Paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
@@ -1081,7 +1120,10 @@ export default function Invoices() {
                                         Resending...
                                       </>
                                     ) : (
-                                      'Resend Invoice'
+                                      <>
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Resend Invoice
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -1095,7 +1137,10 @@ export default function Invoices() {
                                         Updating...
                                       </>
                                     ) : (
-                                      'Mark as Paid'
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
                                     )}
                                   </DropdownMenuItem>
                                 </>
@@ -1112,7 +1157,10 @@ export default function Invoices() {
                                       Updating...
                                     </>
                                   ) : (
-                                    'Mark as not paid'
+                                    <>
+                                      <Undo2 className="h-4 w-4 mr-2" />
+                                      Mark as not paid
+                                    </>
                                   )}
                                 </DropdownMenuItem>
                               )}
