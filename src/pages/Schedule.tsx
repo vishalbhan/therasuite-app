@@ -47,7 +47,7 @@ export default function Schedule() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start from Monday
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   
-  // Generate time slots from 6 AM to 10 PM
+  // Generate time slots from 6 AM to 10 PM, but only show full hours in the time column
   const timeSlots = Array.from({ length: 33 }, (_, i) => {
     const hour = Math.floor(i / 2) + 6; // Start from 6 AM
     const minutes = i % 2 === 0 ? '00' : '30';
@@ -90,9 +90,9 @@ export default function Schedule() {
       const hoursSince6am = currentHour - 6;
       const halfHourIntervals = hoursSince6am * 2 + (currentMinute >= 30 ? 1 : 0);
       
-      const scrollPosition = halfHourIntervals * 64;
+      const scrollPosition = halfHourIntervals * 32;
       
-      scrollContainerRef.current.scrollTop = Math.max(0, scrollPosition - 128);
+      scrollContainerRef.current.scrollTop = Math.max(0, scrollPosition - 64);
     };
     
     const timer = setTimeout(scrollToCurrentTime, 100);
@@ -247,11 +247,21 @@ export default function Schedule() {
           <div className="grid grid-cols-8">
             {/* Time column */}
             <div className="border-r">
-              {timeSlots.map(time => (
-                <div key={time} className="h-16 border-b px-2 text-sm text-gray-500">
-                  {time}
-                </div>
-              ))}
+              {timeSlots.map((time, index) => {
+                const isHourMark = time.endsWith(':00');
+                return (
+                  <div 
+                    key={time} 
+                    className={clsx(
+                      "border-b px-2 text-sm text-gray-500",
+                      "h-8",
+                      !isHourMark && "border-b-dashed" // Use dashed border for 30-min intervals
+                    )}
+                  >
+                    {isHourMark ? time : ''} {/* Only show time for full hours */}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Days columns */}
@@ -270,7 +280,7 @@ export default function Schedule() {
                     <div 
                       key={`${day}-${time}`} 
                       className={clsx(
-                        "h-16 border-b relative group",
+                        "h-8 border-b relative group",
                         isCurrentTimeSlot && "bg-amber-50",
                         isDropTarget && "bg-blue-100"
                       )}
@@ -291,14 +301,15 @@ export default function Schedule() {
                         <div
                           key={apt.id}
                           className={clsx(
-                            "absolute inset-x-1 rounded p-2 text-sm text-white",
+                            "absolute inset-x-1 rounded text-xs text-white flex flex-col",
                             apt.session_type === 'video' ? 'bg-blue-600' : 'bg-blue-300',
                             "cursor-pointer z-10",
                             draggedAppointment?.id === apt.id && "opacity-50"
                           )}
                           style={{
-                            top: '4px',
-                            height: `calc(${apt.session_length / 30} * 4rem - 8px)`
+                            top: '2px',
+                            height: `calc(${apt.session_length / 30} * 2rem - 4px)`,
+                            padding: apt.session_length >= 60 ? '4px' : '2px' // More padding for longer appointments
                           }}
                           draggable={true}
                           onDragStart={(e) => handleDragStart(e, apt)}
@@ -309,7 +320,12 @@ export default function Schedule() {
                             setSelectedAppointment(apt);
                           }}
                         >
-                          {apt.client_name} - {apt.session_type === 'video' ? 'Video' : 'In-Person'}
+                          <div className="font-medium truncate">{apt.client_name}</div>
+                          {apt.session_length >= 60 && (
+                            <div className="text-[10px] opacity-90 mt-auto">
+                              {apt.session_length} min {apt.session_type === 'video' ? '· Video' : '· In-Person'}
+                            </div>
+                          )}
                         </div>
                       ))}
                       <div className="absolute inset-0 group-hover:bg-violet-50 transition-colors pointer-events-none"></div>
