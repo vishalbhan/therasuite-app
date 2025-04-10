@@ -19,6 +19,12 @@ interface Note {
   price: number;
 }
 
+// Helper function to truncate text
+const truncateText = (text: string, maxLength: number) => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
+
 export default function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,8 +154,8 @@ export default function Notes() {
                   {format(new Date(note.session_date), 'MMM d, yyyy')}
                 </td>
                 <td className="py-4 px-4">
-                  <div className="text-sm text-gray-600 line-clamp-2">
-                    {note.notes}
+                  <div className="text-sm text-gray-600">
+                    {truncateText(note.notes, 100)}
                   </div>
                 </td>
                 <td className="py-4 px-4 text-right space-x-2">
@@ -197,7 +203,7 @@ export default function Notes() {
             </div>
 
             <div className="text-sm text-gray-600 line-clamp-3">
-              {note.notes}
+              {truncateText(note.notes, 100)}
             </div>
 
             <div className="flex space-x-2 pt-2 border-t">
