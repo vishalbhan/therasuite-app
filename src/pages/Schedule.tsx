@@ -100,10 +100,24 @@ export default function Schedule() {
   }, []);
 
   const getAppointmentsForDateAndTime = (date: Date, timeSlot: string) => {
+    // Extract hour and minute from the time slot
+    const [slotHour, slotMinute] = timeSlot.split(':').map(Number);
+    
     return appointments.filter(apt => {
       const aptDate = new Date(apt.session_date);
-      return isSameDay(aptDate, date) && 
-             format(aptDate, 'HH:mm') === timeSlot;
+      const aptHour = aptDate.getHours();
+      const aptMinute = aptDate.getMinutes();
+      
+      // Check if the appointment is on the same day
+      if (!isSameDay(aptDate, date)) return false;
+      
+      // For :00 slots, show appointments that start between :00 and :29
+      if (slotMinute === 0) {
+        return aptHour === slotHour && aptMinute < 30;
+      }
+      
+      // For :30 slots, show appointments that start between :30 and :59
+      return aptHour === slotHour && aptMinute >= 30;
     });
   };
 
