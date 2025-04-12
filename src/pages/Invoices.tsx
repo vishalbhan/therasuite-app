@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2 } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2, Pencil } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { UpdatePriceModal } from '@/components/appointments/UpdatePriceModal';
 
 interface Appointment {
   id: string;
@@ -37,6 +38,9 @@ export default function Invoices() {
   const [loadingNotPaid, setLoadingNotPaid] = useState<Record<string, boolean>>({});
   const { currency } = useCurrency();
 
+  const [isUpdatePriceModalOpen, setIsUpdatePriceModalOpen] = useState(false);
+  const [selectedAppointmentForPriceUpdate, setSelectedAppointmentForPriceUpdate] = useState<Appointment | null>(null);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -46,47 +50,54 @@ export default function Invoices() {
     }).format(amount);
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const fetchData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        // Fetch payment details from profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('payment_details')
-          .eq('id', user.id)
-          .single();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('payment_details')
+        .eq('id', user.id)
+        .single();
 
-        if (profileData?.payment_details) {
-          setPaymentDetails(profileData.payment_details);
-        }
-
-        // Fetch appointments for current month
-        const startDate = startOfMonth(currentDate);
-        const endDate = endOfMonth(currentDate);
-
-        const { data: appointmentsData, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('therapist_id', user.id)
-          .in('status', ['scheduled', 'completed'])
-          .gte('session_date', startDate.toISOString())
-          .lte('session_date', endDate.toISOString())
-          .order('session_date', { ascending: false });
-
-        if (error) throw error;
-        setAppointments(appointmentsData);
-      } catch (error) {
-        toast.error("Error fetching invoice data");
-      } finally {
-        setLoading(false);
+      if (profileData?.payment_details) {
+        setPaymentDetails(profileData.payment_details);
       }
-    };
 
-    fetchData();
+      const startDate = startOfMonth(currentDate);
+      const endDate = endOfMonth(currentDate);
+
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('therapist_id', user.id)
+        .in('status', ['scheduled', 'completed'])
+        .gte('session_date', startDate.toISOString())
+        .lte('session_date', endDate.toISOString())
+        .order('session_date', { ascending: false });
+
+      if (error) throw error;
+      setAppointments(appointmentsData || []);
+    } catch (error) {
+      console.error("Error fetching invoice data:", error);
+      toast.error("Error fetching invoice data");
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData().finally(() => setLoading(false));
   }, [currentDate]);
+
+  const handleOpenUpdatePriceModal = (appointment: Appointment) => {
+    setSelectedAppointmentForPriceUpdate(appointment);
+    setIsUpdatePriceModalOpen(true);
+  };
+
+  const handlePriceUpdateSuccess = () => {
+    fetchData();
+  };
 
   const handleSendInvoice = async (appointment: Appointment, isResend = false) => {
     try {
@@ -97,7 +108,6 @@ export default function Invoices() {
         return;
       }
 
-      // Get therapist details
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No active session');
 
@@ -110,7 +120,6 @@ export default function Invoices() {
       if (profileError) throw profileError;
       if (!therapistProfile) throw new Error('Therapist profile not found');
 
-      // Send invoice email
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
 
@@ -140,7 +149,6 @@ export default function Invoices() {
         throw new Error('Failed to send invoice email');
       }
 
-      // Update appointment status only if it's not a resend or if status is pending
       if (!isResend && appointment.payment_status === 'pending') {
         const { error: updateError } = await supabase
           .from('appointments')
@@ -149,7 +157,6 @@ export default function Invoices() {
 
         if (updateError) throw updateError;
 
-        // Update local state
         setAppointments(appointments.map(app =>
           app.id === appointment.id
             ? { ...app, payment_status: 'invoice_sent' }
@@ -180,7 +187,6 @@ export default function Invoices() {
 
       if (error) throw error;
 
-      // Update local state
       setAppointments(appointments.map(app => 
         app.id === appointment.id 
           ? { ...app, payment_status: 'received', payment_date: new Date().toISOString() }
@@ -209,7 +215,6 @@ export default function Invoices() {
 
       if (error) throw error;
 
-      // Update local state
       setAppointments(appointments.map(app =>
         app.id === appointment.id
           ? { ...app, payment_status: 'pending', payment_date: undefined }
@@ -368,25 +373,34 @@ export default function Invoices() {
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-white">
               {appointment.payment_status === 'pending' && (
-                <DropdownMenuItem
-                  onClick={() => handleMarkAsPaid(appointment)}
-                  disabled={loadingPayments[appointment.id]}
-                  className="text-green-600 cursor-pointer"
-                >
-                  {loadingPayments[appointment.id] ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs mr-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Mark as Paid
-                    </>
-                  )}
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleOpenUpdatePriceModal(appointment)}
+                    className="cursor-pointer"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Update Price
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleMarkAsPaid(appointment)}
+                    disabled={loadingPayments[appointment.id]}
+                    className="text-green-600 cursor-pointer"
+                  >
+                    {loadingPayments[appointment.id] ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark as Paid
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </>
               )}
               {appointment.payment_status === 'invoice_sent' && (
                  <>
@@ -484,7 +498,6 @@ export default function Invoices() {
       </div>
       
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-        {/* Desktop View */}
         <div className="hidden md:flex justify-between items-center">
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-500">Monthly Total</span>
@@ -518,7 +531,6 @@ export default function Invoices() {
           </div>
         </div>
 
-        {/* Mobile View */}
         <div className="md:hidden space-y-6">
           <div className="flex flex-col items-center">
             <span className="text-sm font-medium text-gray-500">Monthly Total</span>
@@ -552,11 +564,9 @@ export default function Invoices() {
       </div>
 
       <div className="space-y-8">
-        {/* Today's Appointments */}
         {groupAppointments(appointments).today.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Today</h2>
-            {/* Desktop View */}
             <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
@@ -667,25 +677,34 @@ export default function Invoices() {
                                 <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white">
                               {appointment.payment_status === 'pending' && (
-                                <DropdownMenuItem
-                                  onClick={() => handleMarkAsPaid(appointment)}
-                                  disabled={loadingPayments[appointment.id]}
-                                  className="text-green-600 cursor-pointer"
-                                >
-                                  {loadingPayments[appointment.id] ? (
-                                    <>
-                                      <span className="loading loading-spinner loading-xs mr-2" />
-                                      Updating...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Mark as Paid
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenUpdatePriceModal(appointment)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Update Price
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleMarkAsPaid(appointment)}
+                                    disabled={loadingPayments[appointment.id]}
+                                    className="text-green-600 cursor-pointer"
+                                  >
+                                    {loadingPayments[appointment.id] ? (
+                                      <>
+                                        <span className="loading loading-spinner loading-xs mr-2" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               {appointment.payment_status === 'invoice_sent' && (
                                 <>
@@ -753,7 +772,6 @@ export default function Invoices() {
                 </tbody>
               </table>
             </div>
-            {/* Mobile View */}
             <div className="md:hidden space-y-4">
               {groupAppointments(appointments).today.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
@@ -762,11 +780,9 @@ export default function Invoices() {
           </div>
         )}
 
-        {/* Recent Appointments */}
         {groupAppointments(appointments).recent.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Recent</h2>
-            {/* Desktop View */}
             <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
@@ -877,25 +893,34 @@ export default function Invoices() {
                                 <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white">
                               {appointment.payment_status === 'pending' && (
-                                <DropdownMenuItem
-                                  onClick={() => handleMarkAsPaid(appointment)}
-                                  disabled={loadingPayments[appointment.id]}
-                                  className="text-green-600 cursor-pointer"
-                                >
-                                  {loadingPayments[appointment.id] ? (
-                                    <>
-                                      <span className="loading loading-spinner loading-xs mr-2" />
-                                      Updating...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Mark as Paid
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenUpdatePriceModal(appointment)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Update Price
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleMarkAsPaid(appointment)}
+                                    disabled={loadingPayments[appointment.id]}
+                                    className="text-green-600 cursor-pointer"
+                                  >
+                                    {loadingPayments[appointment.id] ? (
+                                      <>
+                                        <span className="loading loading-spinner loading-xs mr-2" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               {appointment.payment_status === 'invoice_sent' && (
                                 <>
@@ -963,7 +988,6 @@ export default function Invoices() {
                 </tbody>
               </table>
             </div>
-            {/* Mobile View */}
             <div className="md:hidden space-y-4">
               {groupAppointments(appointments).recent.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
@@ -972,11 +996,9 @@ export default function Invoices() {
           </div>
         )}
 
-        {/* Upcoming Appointments */}
         {groupAppointments(appointments).upcoming.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Upcoming</h2>
-            {/* Desktop View */}
             <div className="hidden md:block rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
@@ -1087,25 +1109,34 @@ export default function Invoices() {
                                 <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="bg-white">
                               {appointment.payment_status === 'pending' && (
-                                <DropdownMenuItem
-                                  onClick={() => handleMarkAsPaid(appointment)}
-                                  disabled={loadingPayments[appointment.id]}
-                                  className="text-green-600 cursor-pointer"
-                                >
-                                  {loadingPayments[appointment.id] ? (
-                                    <>
-                                      <span className="loading loading-spinner loading-xs mr-2" />
-                                      Updating...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Mark as Paid
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenUpdatePriceModal(appointment)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Update Price
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleMarkAsPaid(appointment)}
+                                    disabled={loadingPayments[appointment.id]}
+                                    className="text-green-600 cursor-pointer"
+                                  >
+                                    {loadingPayments[appointment.id] ? (
+                                      <>
+                                        <span className="loading loading-spinner loading-xs mr-2" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Paid
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               {appointment.payment_status === 'invoice_sent' && (
                                 <>
@@ -1173,7 +1204,6 @@ export default function Invoices() {
                 </tbody>
               </table>
             </div>
-            {/* Mobile View */}
             <div className="md:hidden space-y-4">
               {groupAppointments(appointments).upcoming.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
@@ -1182,13 +1212,22 @@ export default function Invoices() {
           </div>
         )}
 
-        {/* Show message if no appointments */}
         {appointments.length === 0 && (
           <div className="text-center text-gray-500 py-8">
             No appointments found for this month
           </div>
         )}
       </div>
+
+      {selectedAppointmentForPriceUpdate && (
+        <UpdatePriceModal
+          open={isUpdatePriceModalOpen}
+          onOpenChange={setIsUpdatePriceModalOpen}
+          appointmentId={selectedAppointmentForPriceUpdate.id}
+          currentPrice={selectedAppointmentForPriceUpdate.price}
+          onUpdate={handlePriceUpdateSuccess}
+        />
+      )}
     </div>
   );
 } 
