@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2, Pencil } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2, Pencil, CreditCard } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
   DropdownMenu,
@@ -378,9 +378,9 @@ export default function Invoices() {
                 <>
                   <DropdownMenuItem
                     onClick={() => handleOpenUpdatePriceModal(appointment)}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-blue-600"
                   >
-                    <Pencil className="h-4 w-4 mr-2" />
+                    <CreditCard className="h-4 w-4 mr-2" />
                     Update Price
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -682,9 +682,9 @@ export default function Invoices() {
                                 <>
                                   <DropdownMenuItem
                                     onClick={() => handleOpenUpdatePriceModal(appointment)}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer text-blue-600"
                                   >
-                                    <Pencil className="h-4 w-4 mr-2" />
+                                    <CreditCard className="h-4 w-4 mr-2" />
                                     Update Price
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -898,9 +898,9 @@ export default function Invoices() {
                                 <>
                                   <DropdownMenuItem
                                     onClick={() => handleOpenUpdatePriceModal(appointment)}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer text-blue-600"
                                   >
-                                    <Pencil className="h-4 w-4 mr-2" />
+                                    <CreditCard className="h-4 w-4 mr-2" />
                                     Update Price
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -1114,9 +1114,9 @@ export default function Invoices() {
                                 <>
                                   <DropdownMenuItem
                                     onClick={() => handleOpenUpdatePriceModal(appointment)}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer text-blue-600"
                                   >
-                                    <Pencil className="h-4 w-4 mr-2" />
+                                    <CreditCard className="h-4 w-4 mr-2" />
                                     Update Price
                                   </DropdownMenuItem>
                                   <DropdownMenuItem

@@ -155,7 +155,7 @@ export default function Notes() {
                 </td>
                 <td className="py-4 px-4">
                   <div className="text-sm text-gray-600">
-                    {truncateText(note.notes, 100)}
+                    {truncateText(note.notes, 80)}
                   </div>
                 </td>
                 <td className="py-4 px-4 text-right space-x-2">
