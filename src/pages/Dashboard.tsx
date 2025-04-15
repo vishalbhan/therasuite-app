@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
-  startOfDay, endOfDay, isToday, startOfWeek, endOfWeek, isSameDay, 
-  startOfMonth, endOfMonth, getMonth, getYear, subMonths 
+import {
+  startOfDay, endOfDay, isToday, isSameDay,
+  startOfMonth, endOfMonth, getMonth, getYear, subMonths,
+  addDays, subDays
 } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,9 +13,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Eye, ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { addWeeks, subWeeks } from "date-fns";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
 
@@ -39,10 +37,6 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isWeekView, setIsWeekView] = useState(() => {
-    const savedView = localStorage.getItem('dashboard_view');
-    return savedView ? savedView === 'week' : true;
-  });
   const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [stats, setStats] = useState({
@@ -52,20 +46,16 @@ export default function Dashboard() {
     revenue: { total: 0, change: 0 }
   });
 
-  useEffect(() => {
-    localStorage.setItem('dashboard_view', isWeekView ? 'week' : 'day');
-  }, [isWeekView]);
-
   const fetchAppointments = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const start = isWeekView ? startOfWeek(selectedDate) : startOfDay(selectedDate);
-      const end = isWeekView ? endOfWeek(selectedDate) : endOfDay(selectedDate);
+      // Always fetch for the selected day
+      const start = startOfDay(selectedDate);
+      const end = endOfDay(selectedDate);
 
-      // Use type assertion to tell TypeScript that the result will be Appointment[]
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
@@ -75,7 +65,6 @@ export default function Dashboard() {
         .order('session_date', { ascending: true });
 
       if (error) throw error;
-      // Use type assertion to ensure TypeScript knows this is an Appointment[]
       setAppointments((data || []) as Appointment[]);
     } catch (error: any) {
       toast.error("Error fetching appointments");
@@ -110,7 +99,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [selectedDate, isWeekView]);
+  }, [selectedDate]);
 
   useEffect(() => {
     fetchCalendarAppointments(calendarMonth);
@@ -123,16 +112,11 @@ export default function Dashboard() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
-      setIsWeekView(false);
     }
   };
 
   const handleDateChange = (newDate: Date) => {
     setSelectedDate(newDate);
-  };
-
-  const toggleView = () => {
-    setIsWeekView(!isWeekView);
   };
 
   const hasAppointmentsOnDate = (date: Date) => {
@@ -213,7 +197,7 @@ export default function Dashboard() {
         },
         weeklyHours: { 
           total: thisWeekHours,
-          change: 0 // Set to 0 since we're not showing change
+          change: 0
         },
         activeClients: { 
           total: totalClientsCount,
@@ -221,7 +205,7 @@ export default function Dashboard() {
         },
         revenue: {
           total: thisMonthRevenue,
-          change: 0 // Set to 0 since we're not showing change
+          change: 0
         }
       });
 
@@ -292,7 +276,7 @@ export default function Dashboard() {
             onSelect={handleDateSelect}
             onMonthChange={handleCalendarMonthChange}
             className="rounded-md border"
-            modifiers={{ 
+            modifiers={{
               today: (date) => isToday(date),
               hasAppointments: (date) => hasAppointmentsOnDate(date)
             }}
@@ -313,21 +297,12 @@ export default function Dashboard() {
               },
             }}
           />
-          
-          <Button
-            variant="outline"
-            className="w-full mt-4"
-            onClick={toggleView}
-          >
-            Show {isWeekView ? "Daily" : "Weekly"} View
-          </Button>
         </div>
 
         <div className="order-1 md-order-2">
           <AppointmentsList
             appointments={appointments}
             selectedDate={selectedDate}
-            isWeekView={isWeekView}
             onUpdate={fetchAppointments}
             onDateChange={handleDateChange}
             renderNotes={(notes) => notes && (
