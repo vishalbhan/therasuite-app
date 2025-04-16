@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   startOfDay, endOfDay, isToday, isSameDay,
   startOfMonth, endOfMonth, getMonth, getYear, subMonths,
-  addDays, subDays
+  addDays, subDays, startOfWeek, endOfWeek
 } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
