@@ -3,19 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
+import { CreateClientModal } from '@/components/clients/CreateClientModal';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Calendar, History } from 'lucide-react';
+import { Calendar, History, Plus } from 'lucide-react';
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { Database } from '@/types/database.types';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  avatar_color: string;
-  initials: string;
+type Client = Database['public']['Tables']['clients']['Row'] & {
   last_appointment_date: string | null;
-}
+};
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -24,54 +21,65 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const navigate = useNavigate();
 
+  const fetchClients = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // First, fetch all clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('therapist_id', user.id);
+
+      if (clientsError) throw clientsError;
+
+      // Then, fetch the latest appointment for each client
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('client_id, session_date')
+        .in('client_id', clientsData.map(client => client.id))
+        .order('session_date', { ascending: false });
+
+      if (appointmentsError) throw appointmentsError;
+
+      // Create a map of client_id to latest appointment date
+      const latestAppointments = appointmentsData.reduce((acc, appointment) => {
+        if (!acc[appointment.client_id] || 
+            new Date(appointment.session_date) > new Date(acc[appointment.client_id])) {
+          acc[appointment.client_id] = appointment.session_date;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Combine the data
+      const processedClients = clientsData.map(client => ({
+        ...client,
+        last_appointment_date: latestAppointments[client.id] || null
+      }));
+
+      // Sort clients by last appointment date
+      const sortedClients = processedClients.sort((a, b) => {
+        // If both have appointments, sort by date (most recent first)
+        if (a.last_appointment_date && b.last_appointment_date) {
+          return new Date(b.last_appointment_date).getTime() - new Date(a.last_appointment_date).getTime();
+        }
+        // If only one has appointments, put the one with appointments first
+        if (a.last_appointment_date) return -1;
+        if (b.last_appointment_date) return 1;
+        // If neither has appointments, sort by name
+        return a.name.localeCompare(b.name);
+      });
+
+      setClients(sortedClients);
+    } catch (error) {
+      toast.error("Error fetching clients");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from('clients')
-          .select(`
-            *,
-            appointments (
-              session_date
-            )
-          `)
-          .eq('therapist_id', user.id);
-
-        if (error) throw error;
-
-        const processedClients = data.map(client => ({
-          ...client,
-          last_appointment_date: client.appointments?.length > 0 
-            ? client.appointments.sort((a: any, b: any) => 
-                new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
-              )[0].session_date
-            : null
-        }));
-
-        // Sort clients by last appointment date
-        const sortedClients = processedClients.sort((a, b) => {
-          // If both have appointments, sort by date (most recent first)
-          if (a.last_appointment_date && b.last_appointment_date) {
-            return new Date(b.last_appointment_date).getTime() - new Date(a.last_appointment_date).getTime();
-          }
-          // If only one has appointments, put the one with appointments first
-          if (a.last_appointment_date) return -1;
-          if (b.last_appointment_date) return 1;
-          // If neither has appointments, sort by name
-          return a.name.localeCompare(b.name);
-        });
-
-        setClients(sortedClients);
-      } catch (error) {
-        toast.error("Error fetching clients");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchClients();
   }, []);
 
@@ -82,6 +90,11 @@ export default function Clients() {
     setSearchParams(params);
   };
 
+  const handleClientCreated = () => {
+    // Refresh the clients list
+    fetchClients();
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -90,16 +103,40 @@ export default function Clients() {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-9rem)]">
         <div className="text-lg text-gray-500 mb-2">No clients yet</div>
-        <div className="text-sm text-gray-400">
-          Clients will appear here when you create appointments
+        <div className="text-sm text-gray-400 mb-4">
+          Add your first client to get started
         </div>
+        <Button 
+          onClick={() => {
+            const params = new URLSearchParams(searchParams);
+            params.set('modal', 'add-client');
+            setSearchParams(params);
+          }}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add New Client
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
-      <h1 className="text-2xl font-bold mb-6">Clients</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Clients</h1>
+        <Button 
+          onClick={() => {
+            const params = new URLSearchParams(searchParams);
+            params.set('modal', 'add-client');
+            setSearchParams(params);
+          }}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add New Client
+        </Button>
+      </div>
       
       {/* Desktop Table View */}
       <div className="hidden md:block rounded-md border">
@@ -238,6 +275,17 @@ export default function Clients() {
           }
         }}
         defaultClient={selectedClient}
+      />
+
+      <CreateClientModal
+        open={searchParams.get("modal") === "add-client"}
+        onOpenChange={(open) => {
+          if (!open) {
+            searchParams.delete("modal");
+            setSearchParams(searchParams);
+          }
+        }}
+        onClientCreated={handleClientCreated}
       />
     </div>
   );
