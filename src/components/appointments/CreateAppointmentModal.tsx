@@ -35,13 +35,18 @@ import "react-datepicker/dist/react-datepicker.css";
 import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
-import { Database } from "@/types/supabase";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
+
+// Add interface for the shape of fetched existing appointments
+interface ExistingAppointmentData {
+  session_date: string; // Expecting ISO string from DB
+  session_length: number;
+}
 
 const formSchema = z.object({
   client_name: z.string({
@@ -275,7 +280,7 @@ export function CreateAppointmentModal({
         country: "",
         postal_code: ""
       },
-      price: "0",
+      price: 0,
       notes: "",
       is_recurring: false,
       recurring_day: undefined,
@@ -411,19 +416,68 @@ export function CreateAppointmentModal({
       
       if (session_date < new Date()) {
         setFormError("Cannot schedule an appointment in the past");
+        setIsSubmitting(false);
         return;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setFormError("You must be logged in to create appointments");
+        setIsSubmitting(false);
         return;
       }
 
       // If recurring, create multiple appointments
       const appointmentsToCreate = values.is_recurring ? values.number_of_sessions! : 1;
+      let currentSessionDate = new Date(session_date);
 
       for (let i = 0; i < appointmentsToCreate; i++) {
+        // Start Overlap Check
+        const newAppointmentStart = new Date(currentSessionDate);
+        const newAppointmentEnd = new Date(newAppointmentStart.getTime() + parseInt(values.session_length) * 60 * 1000);
+
+        // Fetch existing appointments for the therapist on the same day
+        const startOfDay = new Date(currentSessionDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(currentSessionDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const { data: existingAppointments, error: fetchError } = await supabase
+          .from('appointments')
+          .select('session_date, session_length')
+          .eq('therapist_id', user.id)
+          .gte('session_date', startOfDay.toISOString())
+          .lte('session_date', endOfDay.toISOString())
+          .in('status', ['scheduled']); // Only check against scheduled appointments
+
+        if (fetchError) {
+          console.error("Error fetching existing appointments:", fetchError);
+          setFormError("Could not verify availability. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (existingAppointments) {
+          // Explicitly cast each item in the loop
+          for (const existingRaw of existingAppointments) {
+            const existing = existingRaw as ExistingAppointmentData;
+            const existingStart = new Date(existing.session_date);
+            // Use the correctly typed existing.session_length (number)
+            const existingEnd = new Date(existingStart.getTime() + existing.session_length * 60 * 1000);
+
+            // Check for overlap: (StartA < EndB) and (EndA > StartB)
+            if (newAppointmentStart < existingEnd && newAppointmentEnd > existingStart) {
+              const formattedDate = format(newAppointmentStart, 'PPP');
+              const formattedTime = format(newAppointmentStart, 'p');
+              setFormError(`You already have another appointment booked for ${formattedDate} at ${formattedTime}. Please select a different date/time.`);
+              setIsSubmitting(false);
+              setIsCreatingMultiple(false);
+              setCreatedCount(0);
+              return;
+            }
+          }
+        }
+
         // First, create or update the client
         const { data: client, error: clientError } = await supabase
           .from('clients')
@@ -446,7 +500,7 @@ export function CreateAppointmentModal({
           client_id: client.id,
           client_name: values.client_name,
           client_email: values.client_email,
-          session_date: session_date.toISOString(),
+          session_date: currentSessionDate.toISOString(),
           session_length: parseInt(values.session_length),
           session_type: values.session_type,
           price: values.price,
@@ -530,7 +584,7 @@ export function CreateAppointmentModal({
               data: {
                 client_name: values.client_name,
                 client_email: values.client_email,
-                session_date: session_date.toISOString(),
+                session_date: currentSessionDate.toISOString(),
                 session_type: values.session_type,
                 session_length: parseInt(values.session_length),
                 therapist_name: therapist?.full_name || 'Your Therapist',
@@ -568,7 +622,7 @@ export function CreateAppointmentModal({
         // If recurring, calculate next date
         if (values.is_recurring) {
           // Add 7 days to get to next week
-          session_date = new Date(session_date.getTime() + 7 * 24 * 60 * 60 * 1000);
+          currentSessionDate = new Date(currentSessionDate.getTime() + 7 * 24 * 60 * 60 * 1000);
         }
       }
 
