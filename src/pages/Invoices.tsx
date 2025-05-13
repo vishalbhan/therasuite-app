@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2, Pencil, CreditCard } from 'lucide-react';
+import { Clock, Video, MapPin, Mail, ChevronLeft, ChevronRight, Calendar, MoreVertical, CheckCircle, Send, Undo2, Pencil, CreditCard, Filter, User } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
   DropdownMenu,
@@ -28,14 +28,22 @@ interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
 }
 
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export default function Invoices() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<string>('');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadingInvoices, setLoadingInvoices] = useState<Record<string, boolean>>({});
   const [loadingPayments, setLoadingPayments] = useState<Record<string, boolean>>({});
   const [loadingNotPaid, setLoadingNotPaid] = useState<Record<string, boolean>>({});
+  const [selectedClient, setSelectedClient] = useState<string>('all');
   const { currency } = useCurrency();
 
   const [isUpdatePriceModalOpen, setIsUpdatePriceModalOpen] = useState(false);
@@ -48,6 +56,24 @@ export default function Invoices() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const fetchClients = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: clientsData, error } = await supabase
+        .from('clients')
+        .select('id, name, email')
+        .eq('therapist_id', user.id);
+
+      if (error) throw error;
+      setAllClients(clientsData || []);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      toast.error("Error fetching clients data");
+    }
   };
 
   const fetchData = async () => {
@@ -87,7 +113,7 @@ export default function Invoices() {
 
   useEffect(() => {
     setLoading(true);
-    fetchData().finally(() => setLoading(false));
+    Promise.all([fetchData(), fetchClients()]).finally(() => setLoading(false));
   }, [currentDate]);
 
   const handleOpenUpdatePriceModal = (appointment: Appointment) => {
@@ -245,7 +271,14 @@ export default function Invoices() {
     setCurrentDate(prev => addMonths(prev, 1));
   };
 
+  // Filter appointments based on selected client
+  const filterAppointmentsByClient = (appts: Appointment[]): Appointment[] => {
+    if (selectedClient === 'all') return appts;
+    return appts.filter(app => app.client_name === selectedClient);
+  };
+
   const groupAppointments = (appointments: Appointment[]) => {
+    const filteredAppointments = filterAppointmentsByClient(appointments);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -258,21 +291,21 @@ export default function Invoices() {
     };
 
     return {
-      today: appointments
+      today: filteredAppointments
         .filter(app => {
           const appDate = new Date(app.session_date);
           appDate.setHours(0, 0, 0, 0);
           return appDate.getTime() === today.getTime();
         })
         .sort(sortByDate),
-      recent: appointments
+      recent: filteredAppointments
         .filter(app => {
           const appDate = new Date(app.session_date);
           appDate.setHours(0, 0, 0, 0);
           return appDate < today;
         })
         .sort(sortByDate),
-      upcoming: appointments
+      upcoming: filteredAppointments
         .filter(app => {
           const appDate = new Date(app.session_date);
           appDate.setHours(0, 0, 0, 0);
@@ -561,6 +594,40 @@ export default function Invoices() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center justify-end mb-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-700 hover:text-primary hover:bg-primary/5"
+            >
+              <User className="h-4 w-4 mr-2" />
+              {selectedClient === 'all' ? 'All Clients' : selectedClient}
+              <Filter className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white">
+            <DropdownMenuItem
+              onClick={() => setSelectedClient('all')}
+              className={`cursor-pointer ${selectedClient === 'all' ? 'bg-primary/10 text-primary' : ''}`}
+            >
+              All Clients
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {allClients.map(client => (
+              <DropdownMenuItem
+                key={client.id}
+                onClick={() => setSelectedClient(client.name)}
+                className={`cursor-pointer ${selectedClient === client.name ? 'bg-primary/10 text-primary' : ''}`}
+              >
+                {client.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="space-y-8">
@@ -1212,9 +1279,15 @@ export default function Invoices() {
           </div>
         )}
 
-        {appointments.length === 0 && (
+        {appointments.length === 0 && selectedClient === 'all' && (
           <div className="text-center text-gray-500 py-8">
             No appointments found for this month
+          </div>
+        )}
+
+        {appointments.length > 0 && filterAppointmentsByClient(appointments).length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            No appointments found for {selectedClient} in this month
           </div>
         )}
       </div>
