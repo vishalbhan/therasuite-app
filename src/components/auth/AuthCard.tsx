@@ -8,17 +8,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as z from "zod";
 import LogRocket from "logrocket";
+import { AuthError } from "@supabase/supabase-js";
 
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
 
     try {
       if (isLogin) {
@@ -85,20 +88,23 @@ const AuthCard = () => {
           if (profileError) throw profileError;
         }
 
-        toast({
-          title: "Success",
-          description: "Account created successfully",
-        });
+        toast.success("Account created successfully");
         
         navigate("/onboarding");
       }
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Authentication error:', error);
+      
+      // Handle Supabase Auth errors
+      if (error instanceof AuthError) {
+        setErrorMessage(error.message);
+      } else if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("An unexpected error occurred");
+      }
+      
+      toast.error(errorMessage || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -121,6 +127,11 @@ const AuthCard = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleAuth} className="space-y-4">
+          {errorMessage && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+              {errorMessage}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
