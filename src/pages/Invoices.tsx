@@ -44,6 +44,7 @@ export default function Invoices() {
   const [loadingPayments, setLoadingPayments] = useState<Record<string, boolean>>({});
   const [loadingNotPaid, setLoadingNotPaid] = useState<Record<string, boolean>>({});
   const [selectedClient, setSelectedClient] = useState<string>('all');
+  const [clientSearchTerm, setClientSearchTerm] = useState<string>('');
   const { currency } = useCurrency();
 
   const [isUpdatePriceModalOpen, setIsUpdatePriceModalOpen] = useState(false);
@@ -406,7 +407,7 @@ export default function Invoices() {
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-white">
+            <DropdownMenuContent align="end" className="bg-white max-h-64 overflow-y-auto">
               {appointment.payment_status === 'pending' && (
                 <>
                   <DropdownMenuItem
@@ -609,7 +610,17 @@ export default function Invoices() {
               <Filter className="h-4 w-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white">
+          <DropdownMenuContent align="end" className="bg-white max-h-64 overflow-y-auto">
+            <div className="p-2 border-b">
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={clientSearchTerm}
+                onChange={(e) => setClientSearchTerm(e.target.value)}
+                className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
             <DropdownMenuItem
               onClick={() => setSelectedClient('all')}
               className={`cursor-pointer ${selectedClient === 'all' ? 'bg-primary/10 text-primary' : ''}`}
@@ -617,7 +628,11 @@ export default function Invoices() {
               All Clients
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {allClients.map(client => (
+            {allClients
+              .filter(client => 
+                client.name.toLowerCase().includes(clientSearchTerm.toLowerCase())
+              )
+              .map(client => (
               <DropdownMenuItem
                 key={client.id}
                 onClick={() => setSelectedClient(client.name)}

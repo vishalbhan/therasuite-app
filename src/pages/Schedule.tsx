@@ -104,6 +104,9 @@ export default function Schedule() {
     const [slotHour, slotMinute] = timeSlot.split(':').map(Number);
     
     return appointments.filter(apt => {
+      // Filter out cancelled appointments
+      if (apt.status === 'cancelled') return false;
+      
       const aptDate = new Date(apt.session_date);
       const aptHour = aptDate.getHours();
       const aptMinute = aptDate.getMinutes();
