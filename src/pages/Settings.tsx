@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Power } from 'lucide-react';
+import { Power, Key } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
 import {
@@ -32,6 +32,14 @@ import {
 } from "@/components/ui/select";
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Update the formSchema to handle the initial state better
 const formSchema = z.object({
@@ -50,14 +58,26 @@ const formSchema = z.object({
   }).nullable(),
 }).partial(); // Make all fields optional
 
+// Password update schema
+const passwordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 // Update type definition
 type FormValues = z.infer<typeof formSchema>;
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function Settings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +91,14 @@ export default function Settings() {
       location: null,
     },
     mode: 'onSubmit', // Change from onChange to onSubmit
+  });
+
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
   });
 
   const { setCurrency: setGlobalCurrency } = useCurrency();
@@ -176,6 +204,29 @@ export default function Settings() {
     }
   };
 
+  const handlePasswordUpdate = async (values: PasswordFormValues) => {
+    try {
+      setIsUpdatingPassword(true);
+      
+      const { error } = await supabase.auth.updateUser({
+        password: values.newPassword
+      });
+
+      if (error) {
+        toast.error(`Failed to update password: ${error.message}`);
+        return;
+      }
+
+      toast.success("Password updated successfully");
+      setShowPasswordModal(false);
+      passwordForm.reset();
+    } catch (error) {
+      toast.error("An unexpected error occurred while updating password");
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -184,14 +235,24 @@ export default function Settings() {
     <div className="max-w-3xl mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <Button
-          variant="destructive"
-          onClick={() => setShowSignOutModal(true)}
-          className="gap-2"
-        >
-          <Power className="h-4 w-4" />
-          Sign Out
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowPasswordModal(true)}
+            className="gap-2"
+          >
+            <Key className="h-4 w-4" />
+            Update Password
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSignOutModal(true)}
+            className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400"
+          >
+            <Power className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       <Form {...form}>
@@ -551,6 +612,72 @@ export default function Settings() {
         cancelText="No, stay signed in"
         onConfirm={handleSignOut}
       />
+
+      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Update Password</DialogTitle>
+            <DialogDescription>
+              Enter your new password below. Make sure it's at least 6 characters long.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...passwordForm}>
+            <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
+              <FormField
+                control={passwordForm.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Enter new password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={passwordForm.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Confirm new password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    passwordForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isUpdatingPassword}
+                >
+                  {isUpdatingPassword ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
