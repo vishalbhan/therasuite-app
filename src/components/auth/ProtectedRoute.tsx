@@ -19,24 +19,23 @@ export function ProtectedRoute() {
           return;
         }
 
-        // Add LogRocket identification
-        LogRocket.identify(session.user.id, {
-          email: session.user.email,
-        });
-
         // Check if profile is complete
         const { data: profile } = await supabase
           .from('profiles')
-          .select('is_onboarding_complete, full_name')
+          .select('is_onboarding_complete, full_name, analytics_consent')
           .eq('id', session.user.id)
           .single();
 
-        // Update LogRocket with name if available
-        if (profile?.full_name) {
-          LogRocket.identify(session.user.id, {
-            email: session.user.email,
-            name: profile.full_name,
-          });
+        // Only identify user in LogRocket if they have given consent and LogRocket is enabled
+        if (import.meta.env.VITE_LOGROCKET_ID && profile?.analytics_consent) {
+          try {
+            LogRocket.identify(session.user.id, {
+              email: session.user.email,
+              name: profile.full_name || 'Unknown',
+            });
+          } catch (error) {
+            console.warn('LogRocket identification failed:', error);
+          }
         }
 
         if (!profile?.is_onboarding_complete) {
