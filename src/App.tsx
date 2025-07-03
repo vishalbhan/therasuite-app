@@ -22,7 +22,11 @@ import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import Notes from "@/pages/Notes";
-LogRocket.init('vb-mindful-pvt-ltd/therasuite');
+
+// Initialize LogRocket only if environment variable is set and in production
+if (import.meta.env.VITE_LOGROCKET_ID && import.meta.env.PROD) {
+  LogRocket.init(import.meta.env.VITE_LOGROCKET_ID);
+}
 
 const App = () => {
   return (
