@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard, Bell } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -365,6 +365,35 @@ export function AppointmentsList({
     }
   };
 
+  const handleSendReminder = async (appointment: Appointment) => {
+    try {
+      const videoLink = appointment.session_type === 'video'
+        ? (appointment.video_provider === 'therasuite'
+            ? `${window.location.origin}/client-video/${appointment.id}`
+            : appointment.custom_meeting_link)
+        : undefined;
+
+      await emailService.sendAppointmentReminder({
+        client_name: appointment.client_name,
+        client_email: appointment.client_email,
+        session_date: appointment.session_date,
+        session_type: appointment.session_type,
+        video_link: videoLink,
+      });
+
+      toast({
+        title: 'Reminder sent',
+        description: 'Reminder email has been sent to the client.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send reminder email',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleStatusUpdate = async (appointment: Appointment, newStatus: AppointmentStatus) => {
     try {
       const { error } = await supabase
@@ -540,6 +569,13 @@ export function AppointmentsList({
                                       Update Price
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
+                                      onClick={() => handleSendReminder(appointment)}
+                                      className="text-blue-600"
+                                    >
+                                      <Bell className="h-4 w-4 mr-2" />
+                                      Send Reminder Email
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
                                       onClick={() => navigate(`/clients/${appointment.client_id}`)}
                                       className="text-blue-600"
                                     >
@@ -707,6 +743,13 @@ export function AppointmentsList({
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           Update Price
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleSendReminder(appointment)}
+                          className="text-blue-600"
+                        >
+                          <Bell className="h-4 w-4 mr-2" />
+                          Send Reminder Email
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => navigate(`/clients/${appointment.client_id}`)}
