@@ -46,6 +46,7 @@ export default function Invoices() {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [clientSearchTerm, setClientSearchTerm] = useState<string>('');
   const { currency } = useCurrency();
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'invoice_sent' | 'received'>('all');
 
   const [isUpdatePriceModalOpen, setIsUpdatePriceModalOpen] = useState(false);
   const [selectedAppointmentForPriceUpdate, setSelectedAppointmentForPriceUpdate] = useState<Appointment | null>(null);
@@ -272,10 +273,16 @@ export default function Invoices() {
     setCurrentDate(prev => addMonths(prev, 1));
   };
 
-  // Filter appointments based on selected client
+  // Filter appointments based on selected client and payment status
   const filterAppointmentsByClient = (appts: Appointment[]): Appointment[] => {
-    if (selectedClient === 'all') return appts;
-    return appts.filter(app => app.client_name === selectedClient);
+    let filtered = appts;
+    if (selectedClient !== 'all') {
+      filtered = filtered.filter(app => app.client_name === selectedClient);
+    }
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(app => app.payment_status === selectedStatus);
+    }
+    return filtered;
   };
 
   const groupAppointments = (appointments: Appointment[]) => {
@@ -597,7 +604,53 @@ export default function Invoices() {
         </div>
       </div>
 
-      <div className="flex items-center justify-end mb-4">
+      <div className="flex items-center justify-end mb-4 gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-700 hover:text-primary hover:bg-primary/5"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {selectedStatus === 'all'
+                ? 'All Statuses'
+                : selectedStatus === 'pending'
+                ? 'Payment Pending'
+                : selectedStatus === 'invoice_sent'
+                ? 'Invoice Sent'
+                : 'Payment Received'}
+              <Filter className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white max-h-64 overflow-y-auto">
+            <DropdownMenuItem
+              onClick={() => setSelectedStatus('all')}
+              className={`cursor-pointer ${selectedStatus === 'all' ? 'bg-primary/10 text-primary' : ''}`}
+            >
+              All Statuses
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setSelectedStatus('pending')}
+              className={`cursor-pointer ${selectedStatus === 'pending' ? 'bg-primary/10 text-primary' : ''}`}
+            >
+              Payment Pending
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setSelectedStatus('invoice_sent')}
+              className={`cursor-pointer ${selectedStatus === 'invoice_sent' ? 'bg-primary/10 text-primary' : ''}`}
+            >
+              Invoice Sent
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setSelectedStatus('received')}
+              className={`cursor-pointer ${selectedStatus === 'received' ? 'bg-primary/10 text-primary' : ''}`}
+            >
+              Payment Received
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
