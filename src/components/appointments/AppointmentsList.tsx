@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard, Bell, Loader2, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -21,6 +21,7 @@ import { UpdatePriceModal } from './UpdatePriceModal';
 
 interface Appointment {
   id: string;
+  client_id: string;
   client_name: string;
   session_date: string;
   session_length: number;
@@ -34,6 +35,7 @@ interface Appointment {
   location?: string;
   therapist_name: string;
   therapist_photo_url?: string;
+  therapist_id?: string;
 }
 
 interface AppointmentsListProps {
@@ -128,6 +130,8 @@ export function AppointmentsList({
   const [startingCall, setStartingCall] = useState<string | null>(null);
   const [copyingLink, setCopyingLink] = useState<string | null>(null);
   const [priceUpdateAppointment, setPriceUpdateAppointment] = useState<Appointment | null>(null);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [openMenuForAppointmentId, setOpenMenuForAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAndUpdateCompletedAppointments(appointments);
@@ -246,9 +250,8 @@ export function AppointmentsList({
           const error = await emailResponse.json();
           console.error('Email error:', error);
           toast({
-            title: "Warning",
+            title: "Notice",
             description: "Started video call but failed to send link to client",
-            variant: "warning",
           });
         } else {
           toast({
@@ -317,9 +320,8 @@ export function AppointmentsList({
         const error = await emailResponse.json();
         console.error('Email error:', error);
         toast({
-          title: "Warning",
+          title: "Notice",
           description: "Started video call but failed to send link to client",
-          variant: "warning",
         });
       } else {
         toast({
@@ -387,6 +389,65 @@ export function AppointmentsList({
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSendReminder = async (appointment: Appointment) => {
+    try {
+      setSendingReminder(appointment.id);
+      const videoLink = appointment.session_type === 'video'
+        ? (appointment.video_provider === 'therasuite'
+            ? `${window.location.origin}/client-video/${appointment.id}`
+            : appointment.custom_meeting_link)
+        : undefined;
+
+      // Ensure therapist details are present
+      let therapistName = appointment.therapist_name;
+      let therapistPhotoUrl = appointment.therapist_photo_url;
+
+      if (!therapistName || !therapistPhotoUrl) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No active session');
+
+        const { data: therapist, error: therapistError } = await supabase
+          .from('profiles')
+          .select('full_name, photo_url')
+          .eq('id', user.id)
+          .single();
+
+        if (therapistError) {
+          console.error('Error fetching therapist details:', therapistError);
+          throw new Error('Failed to fetch therapist details');
+        }
+
+        therapistName = therapist.full_name || 'Your Therapist';
+        therapistPhotoUrl = therapist.photo_url || undefined;
+      }
+
+      await emailService.sendAppointmentReminder({
+        client_name: appointment.client_name,
+        client_email: appointment.client_email,
+        session_date: appointment.session_date,
+        session_type: appointment.session_type,
+        session_length: appointment.session_length,
+        location: appointment.location,
+        therapist_name: therapistName,
+        therapist_photo_url: therapistPhotoUrl,
+        video_link: videoLink,
+      });
+
+      toast({
+        title: "Success",
+        description: "Reminder email sent ✅",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to send reminder',
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReminder(null);
     }
   };
 
@@ -521,7 +582,10 @@ export function AppointmentsList({
                                 {appointment.status}
                               </div>
                               {(appointment.status === 'scheduled' || appointment.status === 'completed') && (
-                                <DropdownMenu>
+                                <DropdownMenu
+                                  open={openMenuForAppointmentId === appointment.id}
+                                  onOpenChange={(open) => setOpenMenuForAppointmentId(open ? appointment.id : null)}
+                                >
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                       <MoreVertical className="h-4 w-4" />
@@ -538,6 +602,26 @@ export function AppointmentsList({
                                     >
                                       <CreditCard className="h-4 w-4 mr-2" />
                                       Update Price
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onSelect={async (e) => {
+                                        e.preventDefault();
+                                        await handleSendReminder(appointment);
+                                        setOpenMenuForAppointmentId(null);
+                                      }}
+                                      disabled={appointment.status !== 'scheduled' || sendingReminder === appointment.id}
+                                    >
+                                      {sendingReminder === appointment.id ? (
+                                        <>
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                          Sending Reminder...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Bell className="h-4 w-4 mr-2" />
+                                          Send Reminder
+                                        </>
+                                      )}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
                                       onClick={() => navigate(`/clients/${appointment.client_id}`)}
@@ -690,7 +774,10 @@ export function AppointmentsList({
                     {appointment.status}
                   </div>
                   {(appointment.status === 'scheduled' || appointment.status === 'completed') && (
-                    <DropdownMenu>
+                    <DropdownMenu
+                      open={openMenuForAppointmentId === appointment.id}
+                      onOpenChange={(open) => setOpenMenuForAppointmentId(open ? appointment.id : null)}
+                    >
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <MoreVertical className="h-4 w-4" />
@@ -707,6 +794,26 @@ export function AppointmentsList({
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           Update Price
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onSelect={async (e) => {
+                            e.preventDefault();
+                            await handleSendReminder(appointment);
+                            setOpenMenuForAppointmentId(null);
+                          }}
+                          disabled={appointment.status !== 'scheduled' || sendingReminder === appointment.id}
+                        >
+                          {sendingReminder === appointment.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Sending Reminder...
+                            </>
+                          ) : (
+                            <>
+                              <Bell className="h-4 w-4 mr-2" />
+                              Send Reminder
+                            </>
+                          )}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => navigate(`/clients/${appointment.client_id}`)}
@@ -844,6 +951,8 @@ export function AppointmentsList({
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+        callStartTime={null}
+        callEndTime={null}
       />
 
       <UpdatePriceModal

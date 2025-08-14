@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import { Toaster } from "sonner";
+import { Toaster as SonnerToaster } from "sonner";
+import { Toaster as AppToaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/react-query";
@@ -32,7 +33,9 @@ const App = () => {
       </Helmet>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
+          {/* App-wide toast providers */}
+          <AppToaster />
+          <SonnerToaster />
           <Router>
             <Routes>
               <Route path="/" element={<AuthLayout />} />

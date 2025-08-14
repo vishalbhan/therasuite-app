@@ -1,8 +1,42 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { Resend } from "npm:resend@1.1.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+
+// Helpers to format dates/times in Asia/Kolkata with ordinal day
+const INDIAN_TZ = 'Asia/Kolkata';
+function getOrdinalSuffix(day: number): string {
+  const j = day % 10, k = day % 100;
+  if (j === 1 && k !== 11) return 'st';
+  if (j === 2 && k !== 12) return 'nd';
+  if (j === 3 && k !== 13) return 'rd';
+  return 'th';
+}
+function formatDateIST(dateInput: string | Date): string {
+  const date = new Date(dateInput);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: INDIAN_TZ,
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).formatToParts(date);
+  const dayStr = parts.find(p => p.type === 'day')?.value || '';
+  const monthStr = parts.find(p => p.type === 'month')?.value || '';
+  const yearStr = parts.find(p => p.type === 'year')?.value || '';
+  const dayNum = parseInt(dayStr, 10);
+  const suffix = getOrdinalSuffix(dayNum);
+  return `${dayNum}${suffix} ${monthStr} ${yearStr}`;
+}
+function formatTimeIST(dateInput: string | Date): string {
+  return new Date(dateInput).toLocaleString('en-US', {
+    timeZone: INDIAN_TZ,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  });
+}
 
 // Common email template wrapper
 const emailTemplate = (content: string) => `
@@ -131,8 +165,8 @@ serve(async (req) => {
 
               <h2>Appointment Details</h2>
               <ul style="list-style: none; padding-left: 0;">
-                <li>📅 <strong>Date:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(',')[0]}</li>
-                <li>⏰ <strong>Time:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}</li>
+                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
+                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
                 ${data.session_type === 'in_person' && data.location ? 
@@ -178,8 +212,8 @@ serve(async (req) => {
 
               <h2>Cancelled Appointment Details</h2>
               <ul style="list-style: none; padding-left: 0;">
-                <li>📅 <strong>Date:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(',')[0]}</li>
-                <li>⏰ <strong>Time:</strong> ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}</li>
+                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
+                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
                 ${data.session_type === 'in_person' && data.location ? 
@@ -197,21 +231,62 @@ serve(async (req) => {
         });
         break;
 
-      case 'appointment_reminder':
+      case 'appointment_reminder': {
+        // Mirror appointment confirmation content but with different subject and title
+        const encodeForCalendar = (text: string) => encodeURIComponent(text.replace(/\n/g, ' '));
+        const startDate = new Date(data.session_date);
+        const endDate = new Date(startDate.getTime() + (data.session_length || 0) * 60000);
+
+        const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${
+          encodeForCalendar(`Therapy Session with ${data.therapist_name}`)
+        }&dates=${
+          startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '')
+        }/${
+          endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '')
+        }&details=${
+          encodeForCalendar(`Your therapy session with ${data.therapist_name}`)
+        }&location=${
+          data.location ? encodeForCalendar(data.location) : ''
+        }`;
+
         await resend.emails.send({
           from: 'appointments@therasuite.app',
           to: data.client_email,
-          subject: 'Appointment Reminder',
+          subject: 'Reminder for Upcoming Session',
           html: emailTemplate(`
             <h1>Appointment Reminder</h1>
             <p>Dear ${data.client_name},</p>
 
             <div class="details-box">
-              <h2>Tomorrow's Appointment</h2>
-              <p>This is a reminder about your appointment tomorrow at ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: 'numeric', hour12: true })}.</p>
-              ${data.session_type === 'video' && data.video_link 
-                ? `<p>Join your video call here: <a href="${data.video_link}" class="button">Join Video Call</a></p>`
-                : ''
+              <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                ${data.therapist_photo_url ? 
+                  `<img src="${data.therapist_photo_url}" alt="Therapist" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 15px;" />` 
+                  : ''
+                }
+                <div>
+                  <p><strong>Your Therapist:</strong><br/>
+                  ${data.therapist_name || 'Your Therapist'}</p>
+                </div>
+              </div>
+
+              <h2>Appointment Details</h2>
+              <ul style="list-style: none; padding-left: 0;">
+                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
+                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
+                <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
+                <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
+                ${data.session_type === 'in_person' && data.location ? 
+                  `<li>📍 <strong>Location:</strong> ${data.location}</li>` 
+                  : ''
+                }
+              </ul>
+              ${data.session_type === 'video' ? 
+                `<p><em>
+                  'You will receive a video call link at the time of the appointment.'
+                  </em></p>` 
+                : `<p style="text-align: center;">
+                    <a href="${googleCalendarUrl}" target="_blank" class="button">Add to Google Calendar</a>
+                   </p>`
               }
             </div>
 
@@ -219,6 +294,7 @@ serve(async (req) => {
           `)
         });
         break;
+      }
 
       case 'video_call_link':
         await resend.emails.send({
@@ -268,7 +344,7 @@ serve(async (req) => {
               </div>
 
               <h2>Invoice Details</h2>
-              <p>Here is your invoice for the session on ${new Date(data.session_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.</p>
+              <p>Here is your invoice for the session on ${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}.</p>
               <h3>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</h3>
               <br/>
               <h3>Payment Details:</h3>
@@ -305,18 +381,10 @@ serve(async (req) => {
               <h2>Updated Appointment Details</h2>
               <p>Your appointment has been rescheduled from:</p>
               <p><strong>Old Date & Time:</strong><br/>
-              ${new Date(data.old_date).toLocaleString('en-US', { 
-                timeZone: 'Asia/Kolkata',
-                dateStyle: 'full',
-                timeStyle: 'short'
-              })}</p>
+              ${formatDateIST(data.old_date)} at ${formatTimeIST(data.old_date)}</p>
               
               <p><strong>New Date & Time:</strong><br/>
-              ${new Date(data.session_date).toLocaleString('en-US', { 
-                timeZone: 'Asia/Kolkata',
-                dateStyle: 'full',
-                timeStyle: 'short'
-              })}</p>
+              ${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}</p>
 
               <ul style="list-style: none; padding-left: 0; margin-top: 20px;">
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>

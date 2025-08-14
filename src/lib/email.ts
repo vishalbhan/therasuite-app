@@ -45,6 +45,11 @@ export const emailService = {
     client_name: string;
     client_email: string;
     session_date: string;
+    session_length: number;
+    session_type: 'video' | 'in_person';
+    location?: string;
+    therapist_name: string;
+    therapist_photo_url?: string;
   }) {
     try {
       // Get the current session
@@ -73,12 +78,16 @@ export const emailService = {
     }
   },
 
-  // Send appointment reminder (24 hours before)
+  // Send appointment reminder
   async sendAppointmentReminder(appointment: {
     client_name: string;
     client_email: string;
     session_date: string;
-    session_type: string;
+    session_type: 'video' | 'in_person';
+    session_length: number;
+    location?: string;
+    therapist_name: string;
+    therapist_photo_url?: string;
     video_link?: string;
   }) {
     try {
