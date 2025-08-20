@@ -317,7 +317,7 @@ export default function Schedule() {
                         <div className="absolute left-0 right-0 h-0.5 bg-red-500 z-20"></div>
                       )}
                       
-                      {decryptedAppointments.map(apt => (
+                      {appointments.map(apt => (
                         <div
                           key={apt.id}
                           className={clsx(
