@@ -38,6 +38,7 @@ import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { encryptClientData } from '@/lib/encryption';
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
@@ -478,13 +479,18 @@ export function CreateAppointmentModal({
           }
         }
 
-        // First, create or update the client
+        // First, encrypt client data then create or update the client
+        const encryptedData = await encryptClientData({
+          name: values.client_name,
+          email: values.client_email
+        });
+
         const { data: client, error: clientError } = await supabase
           .from('clients')
           .upsert({
             therapist_id: user.id,
-            name: values.client_name,
-            email: values.client_email,
+            name: encryptedData.name,
+            email: encryptedData.email,
             avatar_color: generateRandomColor(),
             initials: getInitials(values.client_name),
           } as Database['public']['Tables']['clients']['Insert'], {

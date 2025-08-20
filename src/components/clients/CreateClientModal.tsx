@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitials, generateRandomColor } from '@/lib/utils';
 import { Database } from '@/types/database.types';
+import { encryptClientData } from '@/lib/encryption';
 
 interface CreateClientModalProps {
   open: boolean;
@@ -33,6 +34,12 @@ export function CreateClientModal({ open, onOpenChange, onClientCreated }: Creat
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Encrypt client data before storing
+      const encryptedData = await encryptClientData({
+        name: name.trim(),
+        email: email.trim()
+      });
+
       const initials = getInitials(name);
       const avatarColor = generateRandomColor();
 
@@ -40,8 +47,8 @@ export function CreateClientModal({ open, onOpenChange, onClientCreated }: Creat
         .from('clients')
         .insert({
           therapist_id: user.id,
-          name: name.trim(),
-          email: email.trim(),
+          name: encryptedData.name,
+          email: encryptedData.email,
           initials,
           avatar_color: avatarColor
         } as Database['public']['Tables']['clients']['Insert']);

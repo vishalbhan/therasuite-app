@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { decryptSingleValue, encryptClientData } from '@/lib/encryption';
 
 // Update the Database type definition to include the new fields
 type Database = {
@@ -77,6 +78,8 @@ export default function ClientDetails() {
   const navigate = useNavigate();
   const { clientId } = useParams();
   const [client, setClient] = useState<Client | null>(null);
+  const [decryptedName, setDecryptedName] = useState<string>('');
+  const [decryptedEmail, setDecryptedEmail] = useState<string>('');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +112,12 @@ export default function ClientDetails() {
         if (clientError) throw clientError;
         setClient(clientData as Client);
 
+        // Decrypt client data
+        const decryptedClientName = await decryptSingleValue(clientData.name);
+        const decryptedClientEmail = await decryptSingleValue(clientData.email);
+        setDecryptedName(decryptedClientName);
+        setDecryptedEmail(decryptedClientEmail);
+
         // Fetch client's appointments for current month
         const startDate = startOfMonth(currentDate);
         const endDate = endOfMonth(currentDate);
@@ -135,13 +144,13 @@ export default function ClientDetails() {
   }, [clientId, currentDate]);
 
   useEffect(() => {
-    if (client) {
-      setClientName(client.name || '');
+    if (client && decryptedName && decryptedEmail) {
+      setClientName(decryptedName);
       setPhoneNumber(client.phone_number || '');
       setDiagnosis(client.diagnosis || '');
-      setEmail(client.email || '');
+      setEmail(decryptedEmail);
     }
-  }, [client]);
+  }, [client, decryptedName, decryptedEmail]);
 
   const saveClientDetails = async () => {
     if (!clientName.trim()) {
@@ -154,13 +163,19 @@ export default function ClientDetails() {
     }
 
     try {
+      // Encrypt the name and email before saving
+      const encryptedData = await encryptClientData({
+        name: clientName.trim(),
+        email: email
+      });
+
       const { error } = await supabase
         .from('clients')
         .update({
-          name: clientName.trim(),
+          name: encryptedData.name,
           phone_number: phoneNumber,
           diagnosis: diagnosis,
-          email: email
+          email: encryptedData.email
         })
         .eq('id', clientId);
         
@@ -170,11 +185,14 @@ export default function ClientDetails() {
       if (client) {
         setClient({
           ...client,
-          name: clientName.trim(),
+          name: encryptedData.name,
           phone_number: phoneNumber,
           diagnosis: diagnosis,
-          email: email
+          email: encryptedData.email
         });
+        // Update decrypted values too
+        setDecryptedName(clientName.trim());
+        setDecryptedEmail(email);
       }
       
       setIsEditing(false);
@@ -247,8 +265,8 @@ export default function ClientDetails() {
           {client.initials}
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{isEditing ? clientName : client?.name}</h1>
-          <p className="text-gray-500">{isEditing ? email : client?.email}</p>
+          <h1 className="text-2xl font-bold">{isEditing ? clientName : decryptedName}</h1>
+          <p className="text-gray-500">{isEditing ? email : decryptedEmail}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* Delete Button - Desktop */}
@@ -476,7 +494,10 @@ export default function ClientDetails() {
             setSearchParams(searchParams);
           }
         }}
-        defaultClient={client}
+        defaultClient={{
+          name: decryptedName,
+          email: decryptedEmail
+        }}
         disableClientFields={true}
       />
 
@@ -491,7 +512,7 @@ export default function ClientDetails() {
         open={showDeleteConfirmModal}
         onOpenChange={setShowDeleteConfirmModal}
         title="Delete Client"
-        description={`Are you sure you want to delete ${client?.name}? This action cannot be undone and may delete associated data.`}
+        description={`Are you sure you want to delete ${decryptedName}? This action cannot be undone and may delete associated data.`}
         confirmText="Yes, delete client"
         cancelText="Cancel"
         onConfirm={handleDeleteClient}
