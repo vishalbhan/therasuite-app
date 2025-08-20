@@ -38,7 +38,7 @@ import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { encryptClientData } from '@/lib/encryption';
+import { encryptClientData, decryptSingleValue } from '@/lib/encryption';
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
@@ -167,6 +167,8 @@ interface ExistingClient {
   id: string;
   name: string;
   email: string;
+  decrypted_name?: string;
+  decrypted_email?: string;
 }
 
 interface CreateAppointmentModalProps {
@@ -257,7 +259,7 @@ export function CreateAppointmentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
-  const [clientMode, setClientMode] = useState<ClientSelectionMode>('new');
+  const [clientMode, setClientMode] = useState<ClientSelectionMode>(disableClientFields ? 'existing' : 'new');
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -303,8 +305,18 @@ export function CreateAppointmentModal({
     if (defaultClient) {
       form.setValue('client_name', defaultClient.name);
       form.setValue('client_email', defaultClient.email);
+      
+      // If disableClientFields is true, we need to find the matching client ID
+      if (disableClientFields && existingClients.length > 0) {
+        const matchingClient = existingClients.find(client => 
+          (client.decrypted_email || client.email) === defaultClient.email
+        );
+        if (matchingClient) {
+          setSelectedClientId(matchingClient.id);
+        }
+      }
     }
-  }, [defaultClient, form]);
+  }, [defaultClient, form, disableClientFields, existingClients]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -321,7 +333,16 @@ export function CreateAppointmentModal({
         return;
       }
 
-      setExistingClients(clients || []);
+      // Decrypt client data
+      const clientsWithDecryption = await Promise.all(
+        (clients || []).map(async (client) => ({
+          ...client,
+          decrypted_name: await decryptSingleValue(client.name),
+          decrypted_email: await decryptSingleValue(client.email)
+        }))
+      );
+
+      setExistingClients(clientsWithDecryption);
     };
 
     fetchClients();
@@ -479,27 +500,49 @@ export function CreateAppointmentModal({
           }
         }
 
-        // First, encrypt client data then create or update the client
-        const encryptedData = await encryptClientData({
-          name: values.client_name,
-          email: values.client_email
-        });
+        // Handle client creation/selection
+        let client;
+        if ((clientMode === 'existing' && selectedClientId) || (disableClientFields && selectedClientId)) {
+          // Use existing client
+          const existingClient = existingClients.find(c => c.id === selectedClientId);
+          if (!existingClient) {
+            throw new Error('Selected client not found');
+          }
+          client = existingClient;
+        } else if (disableClientFields) {
+          // If client fields are disabled but no selectedClientId, find by email
+          const matchingClient = existingClients.find(client => 
+            (client.decrypted_email || client.email) === values.client_email
+          );
+          if (matchingClient) {
+            client = matchingClient;
+          } else {
+            throw new Error('Client not found in existing clients list');
+          }
+        } else {
+          // Create new client - encrypt client data first
+          const encryptedData = await encryptClientData({
+            name: values.client_name,
+            email: values.client_email
+          });
 
-        const { data: client, error: clientError } = await supabase
-          .from('clients')
-          .upsert({
-            therapist_id: user.id,
-            name: encryptedData.name,
-            email: encryptedData.email,
-            avatar_color: generateRandomColor(),
-            initials: getInitials(values.client_name),
-          } as Database['public']['Tables']['clients']['Insert'], {
-            onConflict: 'therapist_id,email'
-          })
-          .select()
-          .single();
+          const { data: newClient, error: clientError } = await supabase
+            .from('clients')
+            .upsert({
+              therapist_id: user.id,
+              name: encryptedData.name,
+              email: encryptedData.email,
+              avatar_color: generateRandomColor(),
+              initials: getInitials(values.client_name),
+            } as Database['public']['Tables']['clients']['Insert'], {
+              onConflict: 'therapist_id,email'
+            })
+            .select()
+            .single();
 
-        if (clientError) throw clientError;
+          if (clientError) throw clientError;
+          client = newClient;
+        }
 
         const appointmentData: Database['public']['Tables']['appointments']['Insert'] = {
           therapist_id: user.id,
@@ -655,8 +698,8 @@ export function CreateAppointmentModal({
   const handleClientSelection = (clientId: string) => {
     const selectedClient = existingClients.find(client => client.id === clientId);
     if (selectedClient) {
-      form.setValue('client_name', selectedClient.name);
-      form.setValue('client_email', selectedClient.email);
+      form.setValue('client_name', selectedClient.decrypted_name || selectedClient.name);
+      form.setValue('client_email', selectedClient.decrypted_email || selectedClient.email);
       setSelectedClientId(clientId);
     }
   };
@@ -798,7 +841,7 @@ export function CreateAppointmentModal({
                         <option value="">Select an existing client</option>
                         {existingClients.map((client) => (
                           <option key={client.id} value={client.id}>
-                            {client.name}
+                            {client.decrypted_name || client.name}
                           </option>
                         ))}
                       </select>
