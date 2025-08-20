@@ -544,11 +544,17 @@ export function CreateAppointmentModal({
           client = newClient;
         }
 
+        // Encrypt client data for appointment record too
+        const appointmentClientData = await encryptClientData({
+          name: values.client_name,
+          email: values.client_email
+        });
+
         const appointmentData: Database['public']['Tables']['appointments']['Insert'] = {
           therapist_id: user.id,
           client_id: client.id,
-          client_name: values.client_name,
-          client_email: values.client_email,
+          client_name: appointmentClientData.name,
+          client_email: appointmentClientData.email,
           session_date: currentSessionDate.toISOString(),
           session_length: parseInt(values.session_length),
           session_type: values.session_type,

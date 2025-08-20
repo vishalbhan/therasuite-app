@@ -39,6 +39,7 @@ interface Client {
 
 export default function Invoices() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [decryptedAppointments, setDecryptedAppointments] = useState<(Appointment & { decrypted_client_name: string; decrypted_client_email: string })[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<string>('');
@@ -120,6 +121,18 @@ export default function Invoices() {
 
       if (error) throw error;
       setAppointments(appointmentsData || []);
+
+      // Decrypt appointment client data
+      if (appointmentsData) {
+        const decrypted = await Promise.all(
+          appointmentsData.map(async (appointment) => ({
+            ...appointment,
+            decrypted_client_name: await decryptSingleValue(appointment.client_name),
+            decrypted_client_email: await decryptSingleValue(appointment.client_email)
+          }))
+        );
+        setDecryptedAppointments(decrypted);
+      }
     } catch (error) {
       console.error("Error fetching invoice data:", error);
       toast.error("Error fetching invoice data");
@@ -164,6 +177,11 @@ export default function Invoices() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
 
+      // Find decrypted appointment data
+      const decryptedAppointment = decryptedAppointments.find(a => a.id === appointment.id);
+      const clientName = decryptedAppointment?.decrypted_client_name || appointment.client_name;
+      const clientEmail = decryptedAppointment?.decrypted_client_email || appointment.client_email;
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
         method: 'POST',
         headers: {
@@ -173,8 +191,8 @@ export default function Invoices() {
         body: JSON.stringify({
           type: 'payment_invoice',
           data: {
-            client_name: appointment.client_name,
-            client_email: appointment.client_email,
+            client_name: clientName,
+            client_email: clientEmail,
             session_date: appointment.session_date,
             price: appointment.price,
             payment_details: paymentDetails,
@@ -270,11 +288,11 @@ export default function Invoices() {
     }
   };
 
-  const totalEarnings = appointments
+  const totalEarnings = decryptedAppointments
     .filter(app => app.payment_status === 'received')
     .reduce((sum, app) => sum + app.price, 0);
 
-  const pendingEarnings = appointments
+  const pendingEarnings = decryptedAppointments
     .filter(app => app.payment_status !== 'received')
     .reduce((sum, app) => sum + app.price, 0);
 
@@ -287,10 +305,10 @@ export default function Invoices() {
   };
 
   // Filter appointments based on selected client and payment status
-  const filterAppointmentsByClient = (appts: Appointment[]): Appointment[] => {
+  const filterAppointmentsByClient = (appts: (Appointment & { decrypted_client_name: string; decrypted_client_email: string })[]): (Appointment & { decrypted_client_name: string; decrypted_client_email: string })[] => {
     let filtered = appts;
     if (selectedClient !== 'all') {
-      filtered = filtered.filter(app => app.client_name === selectedClient);
+      filtered = filtered.filter(app => app.decrypted_client_name === selectedClient);
     }
     if (selectedStatus !== 'all') {
       filtered = filtered.filter(app => app.payment_status === selectedStatus);
@@ -298,8 +316,8 @@ export default function Invoices() {
     return filtered;
   };
 
-  const groupAppointments = (appointments: Appointment[]) => {
-    const filteredAppointments = filterAppointmentsByClient(appointments);
+  const groupAppointments = () => {
+    const filteredAppointments = filterAppointmentsByClient(decryptedAppointments);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -336,13 +354,13 @@ export default function Invoices() {
     };
   };
 
-  const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
+  const AppointmentCard = ({ appointment }: { appointment: Appointment & { decrypted_client_name: string; decrypted_client_email: string } }) => {
     return (
       <div className="bg-white rounded-lg border shadow-sm p-4 space-y-3">
         <div className="flex justify-between items-start">
           <div>
-            <div className="font-medium">{appointment.client_name}</div>
-            <div className="text-sm text-gray-500">{appointment.client_email}</div>
+            <div className="font-medium">{appointment.decrypted_client_name}</div>
+            <div className="text-sm text-gray-500">{appointment.decrypted_client_email}</div>
           </div>
           <div className={`px-2 py-1 rounded-full text-xs
             ${appointment.payment_status === 'received' ? 'bg-green-100 text-green-700' : 
@@ -712,7 +730,7 @@ export default function Invoices() {
       </div>
 
       <div className="space-y-8">
-        {groupAppointments(appointments).today.length > 0 && (
+        {groupAppointments().today.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Today</h2>
             <div className="hidden md:block rounded-md border">
@@ -727,11 +745,11 @@ export default function Invoices() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {groupAppointments(appointments).today.map((appointment) => (
+                  {groupAppointments().today.map((appointment) => (
                     <tr key={appointment.id}>
                       <td className="py-4 px-4 w-[200px]">
-                        <div className="font-medium">{appointment.client_name}</div>
-                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                        <div className="font-medium">{appointment.decrypted_client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.decrypted_client_email}</div>
                       </td>
                       <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
@@ -921,14 +939,14 @@ export default function Invoices() {
               </table>
             </div>
             <div className="md:hidden space-y-4">
-              {groupAppointments(appointments).today.map((appointment) => (
+              {groupAppointments().today.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
               ))}
             </div>
           </div>
         )}
 
-        {groupAppointments(appointments).recent.length > 0 && (
+        {groupAppointments().recent.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Recent</h2>
             <div className="hidden md:block rounded-md border">
@@ -943,11 +961,11 @@ export default function Invoices() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {groupAppointments(appointments).recent.map((appointment) => (
+                  {groupAppointments().recent.map((appointment) => (
                     <tr key={appointment.id}>
                       <td className="py-4 px-4 w-[200px]">
-                        <div className="font-medium">{appointment.client_name}</div>
-                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                        <div className="font-medium">{appointment.decrypted_client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.decrypted_client_email}</div>
                       </td>
                       <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
@@ -1137,14 +1155,14 @@ export default function Invoices() {
               </table>
             </div>
             <div className="md:hidden space-y-4">
-              {groupAppointments(appointments).recent.map((appointment) => (
+              {groupAppointments().recent.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
               ))}
             </div>
           </div>
         )}
 
-        {groupAppointments(appointments).upcoming.length > 0 && (
+        {groupAppointments().upcoming.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Upcoming</h2>
             <div className="hidden md:block rounded-md border">
@@ -1159,11 +1177,11 @@ export default function Invoices() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {groupAppointments(appointments).upcoming.map((appointment) => (
+                  {groupAppointments().upcoming.map((appointment) => (
                     <tr key={appointment.id}>
                       <td className="py-4 px-4 w-[200px]">
-                        <div className="font-medium">{appointment.client_name}</div>
-                        <div className="text-sm text-gray-500">{appointment.client_email}</div>
+                        <div className="font-medium">{appointment.decrypted_client_name}</div>
+                        <div className="text-sm text-gray-500">{appointment.decrypted_client_email}</div>
                       </td>
                       <td className="py-4 px-4 w-[300px]">
                         <div className="flex items-center gap-2 text-gray-500">
@@ -1353,20 +1371,20 @@ export default function Invoices() {
               </table>
             </div>
             <div className="md:hidden space-y-4">
-              {groupAppointments(appointments).upcoming.map((appointment) => (
+              {groupAppointments().upcoming.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
               ))}
             </div>
           </div>
         )}
 
-        {appointments.length === 0 && selectedClient === 'all' && (
+        {decryptedAppointments.length === 0 && selectedClient === 'all' && (
           <div className="text-center text-gray-500 py-8">
             No appointments found for this month
           </div>
         )}
 
-        {appointments.length > 0 && filterAppointmentsByClient(appointments).length === 0 && (
+        {decryptedAppointments.length > 0 && filterAppointmentsByClient(decryptedAppointments).length === 0 && (
           <div className="text-center text-gray-500 py-8">
             No appointments found for {selectedClient} in this month
           </div>

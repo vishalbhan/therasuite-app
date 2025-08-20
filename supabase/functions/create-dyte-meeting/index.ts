@@ -41,7 +41,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { appointmentId, therapistId, clientEmail } = await req.json()
+    const { appointmentId, therapistId, clientId } = await req.json()
 
     // Create a meeting using Dyte's API
     const response = await fetch('https://api.dyte.io/v2/meetings', {
@@ -72,7 +72,7 @@ serve(async (req) => {
     // Create participant tokens for both therapist and client
     const [therapistToken, clientToken] = await Promise.all([
       createParticipantToken(meeting.id, 'host', therapistId),
-      createParticipantToken(meeting.id, 'participant', clientEmail),
+      createParticipantToken(meeting.id, 'participant', clientId),
     ])
 
     // Update the appointment with the meeting details

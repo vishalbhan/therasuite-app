@@ -18,11 +18,14 @@ import { useNavigate } from "react-router-dom";
 import { emailService } from '@/lib/email';
 import { NotesModal } from "./NotesModal";
 import { UpdatePriceModal } from './UpdatePriceModal';
+import { useDecryptedAppointments } from '@/hooks/useDecryptedAppointments';
 
 interface Appointment {
   id: string;
   client_id: string;
   client_name: string;
+  decrypted_client_name?: string;
+  decrypted_client_email?: string;
   session_date: string;
   session_length: number;
   session_type: 'video' | 'in_person';
@@ -117,6 +120,9 @@ export function AppointmentsList({
   renderNotes,
   onDateChange
 }: AppointmentsListProps) {
+  // Decrypt appointment client data
+  const decryptedAppointments = useDecryptedAppointments(appointments);
+  
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -180,9 +186,10 @@ export function AppointmentsList({
       }
 
       // Send cancellation email with enhanced data
+      const decryptedCancellingAppointment = decryptedAppointments.find(a => a.id === appointmentToCancel.id);
       await emailService.sendAppointmentCancellation({
-        client_name: appointmentToCancel.client_name,
-        client_email: appointmentToCancel.client_email,
+        client_name: decryptedCancellingAppointment?.decrypted_client_name || appointmentToCancel.client_name,
+        client_email: decryptedCancellingAppointment?.decrypted_client_email || appointmentToCancel.client_email,
         session_date: appointmentToCancel.session_date,
         session_length: appointmentToCancel.session_length,
         session_type: appointmentToCancel.session_type,
@@ -228,6 +235,11 @@ export function AppointmentsList({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No active session');
 
+        // Find the decrypted appointment data
+        const decryptedAppointment = decryptedAppointments.find(a => a.id === appointment.id);
+        const clientName = decryptedAppointment?.decrypted_client_name || appointment.client_name;
+        const clientEmail = decryptedAppointment?.decrypted_client_email || appointment.client_email;
+
         const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
           method: 'POST',
           headers: {
@@ -237,8 +249,8 @@ export function AppointmentsList({
           body: JSON.stringify({
             type: 'video_call_link',
             data: {
-              client_name: appointment.client_name,
-              client_email: appointment.client_email,
+              client_name: clientName,
+              client_email: clientEmail,
               session_date: appointment.session_date,
               video_link: appointment.custom_meeting_link,
               video_provider: appointment.video_provider
@@ -279,7 +291,7 @@ export function AppointmentsList({
           body: JSON.stringify({
             appointmentId: appointment.id,
             therapistId: appointment.therapist_id,
-            clientEmail: appointment.client_email,
+            clientId: appointment.client_id,
           }),
         }
       );
@@ -298,6 +310,11 @@ export function AppointmentsList({
       // Generate client video link and send email
       const clientVideoLink = `${window.location.origin}/client-video/${appointment.id}`;
       
+      // Find the decrypted appointment data
+      const decryptedAppointment = decryptedAppointments.find(a => a.id === appointment.id);
+      const clientName = decryptedAppointment?.decrypted_client_name || appointment.client_name;
+      const clientEmail = decryptedAppointment?.decrypted_client_email || appointment.client_email;
+      
       const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
         method: 'POST',
         headers: {
@@ -307,8 +324,8 @@ export function AppointmentsList({
         body: JSON.stringify({
           type: 'video_call_link',
           data: {
-            client_name: appointment.client_name,
-            client_email: appointment.client_email,
+            client_name: clientName,
+            client_email: clientEmail,
             session_date: appointment.session_date,
             video_link: clientVideoLink,
             video_provider: 'therasuite'
@@ -424,9 +441,14 @@ export function AppointmentsList({
         therapistPhotoUrl = therapist.photo_url || undefined;
       }
 
+      // Find the decrypted appointment data
+      const decryptedReminderAppointment = decryptedAppointments.find(a => a.id === appointment.id);
+      const reminderClientName = decryptedReminderAppointment?.decrypted_client_name || appointment.client_name;
+      const reminderClientEmail = decryptedReminderAppointment?.decrypted_client_email || appointment.client_email;
+
       await emailService.sendAppointmentReminder({
-        client_name: appointment.client_name,
-        client_email: appointment.client_email,
+        client_name: reminderClientName,
+        client_email: reminderClientEmail,
         session_date: appointment.session_date,
         session_type: appointment.session_type,
         session_length: appointment.session_length,
@@ -526,7 +548,7 @@ export function AppointmentsList({
             <div className="space-y-10">
               {Array.from({ length: 7 }, (_, i) => {
                 const day = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), i);
-                const dayAppointments = appointments.filter(apt => 
+                const dayAppointments = decryptedAppointments.filter(apt => 
                   isSameDay(new Date(apt.session_date), day)
                 ).sort((a, b) => 
                   compareAsc(new Date(a.session_date), new Date(b.session_date))
@@ -556,7 +578,7 @@ export function AppointmentsList({
                                 {formatTimeRange(appointment.session_date, appointment.session_length)}
                               </div>
                               <h3 className="font-semibold text-lg">
-                                {appointment.client_name}
+                                {appointment.decrypted_client_name}
                               </h3>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 <span className="text-muted-foreground">{appointment.session_length} mins</span>
@@ -736,7 +758,7 @@ export function AppointmentsList({
               })}
             </div>
           ) : (
-            appointments.map((appointment) => (
+            decryptedAppointments.map((appointment) => (
             <div
               key={appointment.id}
               className="border rounded-lg p-4 hover:shadow transition-shadow"
@@ -748,7 +770,7 @@ export function AppointmentsList({
                     {formatTimeRange(appointment.session_date, appointment.session_length)}
                   </div>
                   <h3 className="font-semibold text-lg">
-                    {appointment.client_name}
+                    {appointment.decrypted_client_name}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                     <span className="text-muted-foreground">{appointment.session_length} mins</span>
@@ -940,7 +962,7 @@ export function AppointmentsList({
         open={showCancelModal}
         onOpenChange={setShowCancelModal}
         title="Cancel Appointment"
-        description={`Are you sure you want to cancel the appointment with ${appointmentToCancel?.client_name}? This action cannot be undone.`}
+        description={`Are you sure you want to cancel the appointment with ${decryptedAppointments.find(a => a.id === appointmentToCancel?.id)?.decrypted_client_name || appointmentToCancel?.client_name}? This action cannot be undone.`}
         confirmText="Yes, cancel appointment"
         cancelText="No, keep appointment"
         onConfirm={handleCancelConfirm}

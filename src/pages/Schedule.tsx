@@ -12,6 +12,7 @@ import { EditAppointmentModal } from '@/components/appointments/EditAppointmentM
 import { Button } from '@/components/ui/button';
 import { CalendarPlus, XCircle } from 'lucide-react';
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useDecryptedAppointments } from '@/hooks/useDecryptedAppointments';
 
 interface Appointment {
   id: string;
@@ -34,6 +35,7 @@ const formatDateForCreateModal = (date: Date, timeSlot: string) => {
 
 export default function Schedule() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const decryptedAppointments = useDecryptedAppointments(appointments);
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -103,7 +105,7 @@ export default function Schedule() {
     // Extract hour and minute from the time slot
     const [slotHour, slotMinute] = timeSlot.split(':').map(Number);
     
-    return appointments.filter(apt => {
+    return decryptedAppointments.filter(apt => {
       // Filter out cancelled appointments
       if (apt.status === 'cancelled') return false;
       
@@ -159,7 +161,8 @@ export default function Schedule() {
     // Create a ghost image for dragging
     const ghost = document.createElement('div');
     ghost.classList.add('bg-blue-600', 'text-white', 'p-2', 'rounded', 'opacity-70');
-    ghost.textContent = appointment.client_name;
+    const decryptedAppointment = decryptedAppointments.find(a => a.id === appointment.id);
+    ghost.textContent = decryptedAppointment?.decrypted_client_name || appointment.client_name;
     ghost.style.width = '150px';
     ghost.style.position = 'absolute';
     ghost.style.top = '-1000px';
@@ -314,7 +317,7 @@ export default function Schedule() {
                         <div className="absolute left-0 right-0 h-0.5 bg-red-500 z-20"></div>
                       )}
                       
-                      {appointments.map(apt => (
+                      {decryptedAppointments.map(apt => (
                         <div
                           key={apt.id}
                           className={clsx(
@@ -337,7 +340,7 @@ export default function Schedule() {
                             setSelectedAppointment(apt);
                           }}
                         >
-                          <div className="font-medium truncate">{apt.client_name}</div>
+                          <div className="font-medium truncate">{apt.decrypted_client_name}</div>
                           {apt.session_length >= 60 && (
                             <div className="text-[10px] opacity-90 mt-auto">
                               {apt.session_length} min {apt.session_type === 'video' ? '· Video' : '· In-Person'}

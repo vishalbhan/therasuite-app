@@ -7,6 +7,7 @@ import { NotesModal } from "@/components/appointments/NotesModal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PanelRightOpen, PanelRightClose, Save } from 'lucide-react';
+import { decryptSingleValue } from '@/lib/encryption';
 
 interface DyteMeetingProps {
   appointmentId: string;
@@ -14,6 +15,7 @@ interface DyteMeetingProps {
 
 interface Appointment {
   id: string;
+  client_name: string;
   client_email: string;
   therapist_id: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -37,6 +39,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [decryptedClientName, setDecryptedClientName] = useState<string>('');
   const [hasCallEnded, setHasCallEnded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 20, y: 20 });
@@ -103,6 +106,12 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
 
         setAppointment(appointmentData);
         setNotes(appointmentData.notes || '');
+
+        // Decrypt the client name
+        if (appointmentData.client_name) {
+          const decrypted = await decryptSingleValue(appointmentData.client_name);
+          setDecryptedClientName(decrypted);
+        }
 
         // Initialize Dyte client with the stored therapist token
         const dyteClient = await DyteClient.init({
@@ -266,7 +275,7 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           <div className="p-3 flex-1 flex flex-col overflow-hidden">
             {appointment && (
               <div className="mb-2 text-xs text-gray-600">
-                <p>Client: {appointment.client_email}</p>
+                <p>Client: {decryptedClientName || 'Loading...'}</p>
                 <p>Date: {new Date(appointment.session_date).toLocaleDateString()}</p>
               </div>
             )}
