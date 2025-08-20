@@ -9,9 +9,12 @@ import { format } from 'date-fns';
 import { Calendar, History, Plus } from 'lucide-react';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Database } from '@/types/database.types';
+import { decryptSingleValue } from '@/lib/encryption';
 
 type Client = Database['public']['Tables']['clients']['Row'] & {
   last_appointment_date: string | null;
+  decrypted_name?: string;
+  decrypted_email?: string;
 };
 
 export default function Clients() {
@@ -52,11 +55,13 @@ export default function Clients() {
         return acc;
       }, {} as Record<string, string>);
 
-      // Combine the data
-      const processedClients = clientsData.map(client => ({
+      // Combine the data and decrypt client information
+      const processedClients = await Promise.all(clientsData.map(async (client) => ({
         ...client,
-        last_appointment_date: latestAppointments[client.id] || null
-      }));
+        last_appointment_date: latestAppointments[client.id] || null,
+        decrypted_name: await decryptSingleValue(client.name),
+        decrypted_email: await decryptSingleValue(client.email)
+      })));
 
       // Sort clients by last appointment date
       const sortedClients = processedClients.sort((a, b) => {
@@ -67,8 +72,8 @@ export default function Clients() {
         // If only one has appointments, put the one with appointments first
         if (a.last_appointment_date) return -1;
         if (b.last_appointment_date) return 1;
-        // If neither has appointments, sort by name
-        return a.name.localeCompare(b.name);
+        // If neither has appointments, sort by decrypted name
+        return (a.decrypted_name || a.name).localeCompare(b.decrypted_name || b.name);
       });
 
       setClients(sortedClients);
@@ -164,11 +169,11 @@ export default function Clients() {
                     >
                       {client.initials}
                     </div>
-                    <span className="font-medium">{client.name}</span>
+                    <span className="font-medium">{client.decrypted_name || client.name}</span>
                   </div>
                 </td>
                 <td className="py-4 px-4 text-gray-500">
-                  {client.email}
+                  {client.decrypted_email || client.email}
                 </td>
                 <td className="py-4 px-4 text-gray-500">
                   {client.last_appointment_date 
@@ -223,8 +228,8 @@ export default function Clients() {
                 {client.initials}
               </div>
               <div>
-                <div className="font-medium">{client.name}</div>
-                <div className="text-sm text-gray-500">{client.email}</div>
+                <div className="font-medium">{client.decrypted_name || client.name}</div>
+                <div className="text-sm text-gray-500">{client.decrypted_email || client.email}</div>
               </div>
             </div>
 
@@ -274,7 +279,10 @@ export default function Clients() {
             setSelectedClient(null);
           }
         }}
-        defaultClient={selectedClient}
+        defaultClient={selectedClient ? {
+          name: selectedClient.decrypted_name || selectedClient.name,
+          email: selectedClient.decrypted_email || selectedClient.email
+        } : null}
       />
 
       <CreateClientModal

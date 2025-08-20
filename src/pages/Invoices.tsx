@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { UpdatePriceModal } from '@/components/appointments/UpdatePriceModal';
+import { decryptSingleValue } from '@/lib/encryption';
 
 interface Appointment {
   id: string;
@@ -32,6 +33,8 @@ interface Client {
   id: string;
   name: string;
   email: string;
+  decrypted_name?: string;
+  decrypted_email?: string;
 }
 
 export default function Invoices() {
@@ -71,7 +74,17 @@ export default function Invoices() {
         .eq('therapist_id', user.id);
 
       if (error) throw error;
-      setAllClients(clientsData || []);
+
+      // Decrypt client data
+      const clientsWithDecryption = await Promise.all(
+        (clientsData || []).map(async (client) => ({
+          ...client,
+          decrypted_name: await decryptSingleValue(client.name),
+          decrypted_email: await decryptSingleValue(client.email)
+        }))
+      );
+
+      setAllClients(clientsWithDecryption);
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast.error("Error fetching clients data");
@@ -683,15 +696,15 @@ export default function Invoices() {
             <DropdownMenuSeparator />
             {allClients
               .filter(client => 
-                client.name.toLowerCase().includes(clientSearchTerm.toLowerCase())
+                (client.decrypted_name || client.name).toLowerCase().includes(clientSearchTerm.toLowerCase())
               )
               .map(client => (
               <DropdownMenuItem
                 key={client.id}
-                onClick={() => setSelectedClient(client.name)}
-                className={`cursor-pointer ${selectedClient === client.name ? 'bg-primary/10 text-primary' : ''}`}
+                onClick={() => setSelectedClient(client.decrypted_name || client.name)}
+                className={`cursor-pointer ${selectedClient === (client.decrypted_name || client.name) ? 'bg-primary/10 text-primary' : ''}`}
               >
-                {client.name}
+                {client.decrypted_name || client.name}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
