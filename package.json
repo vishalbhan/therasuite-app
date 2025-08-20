@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.ts",
+    "encrypt-existing-data": "node encrypt-existing-data.js",
+    "test-encryption": "node test-encryption.js",
     "postinstall": "rm -rf node_modules/.cache"
   },
   "dependencies": {
@@ -61,7 +63,7 @@
     "cmdk": "^1.0.0",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.6.1",
     "embla-carousel-react": "^8.3.0",
     "express": "^4.21.2",
     "input-otp": "^1.2.4",

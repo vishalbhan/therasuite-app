@@ -7,16 +7,23 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { NotesModal } from '@/components/appointments/NotesModal';
+import { decryptSingleValue } from '@/lib/encryption';
 import React from 'react';
 
 interface Note {
   id: string;
   client_name: string;
+  client_email: string;
   client_id: string;
   session_date: string;
   notes: string;
   session_type: 'video' | 'in-person';
   price: number;
+}
+
+interface DecryptedNote extends Note {
+  decrypted_client_name: string;
+  decrypted_client_email: string;
 }
 
 // Helper function to truncate text
@@ -27,6 +34,7 @@ const truncateText = (text: string, maxLength: number) => {
 
 export default function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [decryptedNotes, setDecryptedNotes] = useState<DecryptedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [viewingNotes, setViewingNotes] = useState<{
@@ -52,7 +60,7 @@ export default function Notes() {
 
       const { data, error, count } = await supabase
         .from('appointments')
-        .select('id, client_name, client_id, session_date, notes, session_type, price', { count: 'exact' })
+        .select('id, client_name, client_email, client_id, session_date, notes, session_type, price', { count: 'exact' })
         .eq('therapist_id', user.id)
         .not('notes', 'is', null)
         .not('notes', 'eq', '')
@@ -69,6 +77,22 @@ export default function Notes() {
         setNotes(data as Note[]);
       } else {
         setNotes(prev => [...prev, ...(data as Note[])]);
+      }
+
+      // Decrypt client names and emails
+      const notesToDecrypt = replace ? (data as Note[]) : (data as Note[]);
+      const decryptedNotesData = await Promise.all(
+        notesToDecrypt.map(async (note) => ({
+          ...note,
+          decrypted_client_name: await decryptSingleValue(note.client_name),
+          decrypted_client_email: await decryptSingleValue(note.client_email)
+        }))
+      );
+
+      if (replace) {
+        setDecryptedNotes(decryptedNotesData);
+      } else {
+        setDecryptedNotes(prev => [...prev, ...decryptedNotesData]);
       }
     } catch (error) {
       toast.error("Error fetching notes");
@@ -96,9 +120,9 @@ export default function Notes() {
 
   // Filter notes based on selected client
   const filteredNotes = React.useMemo(() => {
-    if (!selectedClient) return notes;
-    return notes.filter(note => note.client_name === selectedClient);
-  }, [notes, selectedClient]);
+    if (!selectedClient) return decryptedNotes;
+    return decryptedNotes.filter(note => note.decrypted_client_name === selectedClient);
+  }, [decryptedNotes, selectedClient]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -125,7 +149,7 @@ export default function Notes() {
           className="w-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <option value="">All Clients</option>
-          {Array.from(new Set(notes.map(note => note.client_name))).map(client => (
+          {Array.from(new Set(decryptedNotes.map(note => note.decrypted_client_name))).map(client => (
             <option key={client} value={client}>
               {client}
             </option>
@@ -148,7 +172,8 @@ export default function Notes() {
             {filteredNotes.map((note) => (
               <tr key={note.id} className="hover:bg-gray-50">
                 <td className="py-4 px-4">
-                  <div className="font-medium">{note.client_name}</div>
+                  <div className="font-medium">{note.decrypted_client_name}</div>
+                  <div className="text-sm text-gray-500">{note.decrypted_client_email}</div>
                 </td>
                 <td className="py-4 px-4 text-gray-500">
                   {format(new Date(note.session_date), 'MMM d, yyyy')}
@@ -196,7 +221,8 @@ export default function Notes() {
             className="bg-white rounded-lg border shadow-sm p-4 space-y-4"
           >
             <div>
-              <div className="font-medium">{note.client_name}</div>
+              <div className="font-medium">{note.decrypted_client_name}</div>
+              <div className="text-sm text-gray-500">{note.decrypted_client_email}</div>
               <div className="text-sm text-gray-500">
                 {format(new Date(note.session_date), 'MMM d, yyyy')}
               </div>
