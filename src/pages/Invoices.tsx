@@ -216,11 +216,8 @@ export default function Invoices() {
 
         if (updateError) throw updateError;
 
-        setAppointments(appointments.map(app =>
-          app.id === appointment.id
-            ? { ...app, payment_status: 'invoice_sent' }
-            : app
-        ));
+        // Refresh data to ensure consistency
+        await fetchData();
       }
 
       toast.success(isResend ? "Invoice resent successfully" : "Invoice sent successfully");
@@ -246,11 +243,8 @@ export default function Invoices() {
 
       if (error) throw error;
 
-      setAppointments(appointments.map(app => 
-        app.id === appointment.id 
-          ? { ...app, payment_status: 'received', payment_date: new Date().toISOString() }
-          : app
-      ));
+      // Refresh data to ensure consistency
+      await fetchData();
 
       toast.success("Payment marked as received");
     } catch (error) {
@@ -274,11 +268,8 @@ export default function Invoices() {
 
       if (error) throw error;
 
-      setAppointments(appointments.map(app =>
-        app.id === appointment.id
-          ? { ...app, payment_status: 'pending', payment_date: undefined }
-          : app
-      ));
+      // Refresh data to ensure consistency
+      await fetchData();
 
       toast.success("Payment status reverted to pending");
     } catch (error) {
