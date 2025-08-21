@@ -34,7 +34,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle, Calendar as CalendarIcon2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -259,6 +259,9 @@ export function CreateAppointmentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [createdAppointmentData, setCreatedAppointmentData] = useState<FormValues | null>(null);
+  const [emailWarning, setEmailWarning] = useState<boolean>(false);
   const [clientMode, setClientMode] = useState<ClientSelectionMode>(disableClientFields ? 'existing' : 'new');
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -425,10 +428,64 @@ export function CreateAppointmentModal({
     updateLocation();
   }, [form.watch('session_type')]);
 
+  const generateGoogleCalendarUrl = (appointmentData: FormValues) => {
+    const [hours, minutes] = appointmentData.session_time.split(":");
+    const startDate = new Date(appointmentData.session_date);
+    startDate.setHours(parseInt(hours), parseInt(minutes));
+    
+    const endDate = new Date(startDate.getTime() + parseInt(appointmentData.session_length) * 60 * 1000);
+    
+    // Format dates for Google Calendar (YYYYMMDDTHHMMSSZ)
+    const formatDateForGoogle = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    
+    const title = `TheraSuite Appointment with ${appointmentData.client_name}`;
+    const startTime = formatDateForGoogle(startDate);
+    const endTime = formatDateForGoogle(endDate);
+    
+    let description = `Session Type: ${appointmentData.session_type === 'video' ? 'Video Call' : 'In Person'}\n`;
+    description += `Duration: ${appointmentData.session_length} minutes\n`;
+    
+    if (appointmentData.session_type === 'video') {
+      if (appointmentData.video_provider === 'therasuite') {
+        description += `Video Platform: TheraSuite Video`;
+      } else {
+        description += `Video Platform: ${appointmentData.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}`;
+      }
+    }
+    
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title,
+      dates: `${startTime}/${endTime}`,
+      details: description,
+    });
+    
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  const handleAddToCalendar = () => {
+    if (createdAppointmentData) {
+      const calendarUrl = generateGoogleCalendarUrl(createdAppointmentData);
+      window.open(calendarUrl, '_blank');
+    }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowSuccessOverlay(false);
+    setCreatedAppointmentData(null);
+    setEmailWarning(false);
+    onOpenChange(false);
+    form.reset();
+  };
+
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     setIsCreatingMultiple(values.is_recurring);
     setFormError(null);
+    setShowSuccessOverlay(false);
+    setEmailWarning(false);
     let successCount = 0;
 
     try {
@@ -590,7 +647,7 @@ export function CreateAppointmentModal({
               body: JSON.stringify({
                 appointmentId: appointment.id,
                 therapistId: user.id,
-                clientEmail: values.client_email,
+                clientId: client.id,
               }),
             }
           );
@@ -659,16 +716,9 @@ export function CreateAppointmentModal({
           }
         } catch (emailError) {
           console.error('Email error:', emailError);
-          // Don't throw here, just show a warning toast
-          toast({
-            title: "Warning",
-            description: "Appointment created but confirmation email could not be sent",
-            variant: "default",
-          });
-          // Return early to avoid showing success message
-          onOpenChange(false);
-          form.reset();
-          return;
+          // Don't throw here, just log the email error
+          // We'll still show success since appointment was created
+          setEmailWarning(true);
         }
 
         successCount++;
@@ -681,16 +731,20 @@ export function CreateAppointmentModal({
         }
       }
 
-      toast({
-        title: "Success",
-        description: values.is_recurring 
-          ? `${successCount} appointments created successfully`
-          : "Appointment created successfully",
-      });
-
-      onAppointmentCreated?.();
-      onOpenChange(false);
-      form.reset();
+      // Show success overlay for single appointments
+      if (!values.is_recurring) {
+        setShowSuccessOverlay(true);
+        setCreatedAppointmentData(values);
+        onAppointmentCreated?.();
+      } else {
+        toast({
+          title: "Success",
+          description: `${successCount} appointments created successfully`,
+        });
+        onAppointmentCreated?.();
+        onOpenChange(false);
+        form.reset();
+      }
     } catch (error: any) {
       console.error('Full error:', error);
       setFormError(error.message || "Failed to create appointment");
@@ -736,6 +790,50 @@ export function CreateAppointmentModal({
             <p className="text-xs text-muted-foreground mt-1">
               Please do not refresh or close the page
             </p>
+          </div>
+        )}
+        {((isSubmitting && !isCreatingMultiple) || showSuccessOverlay) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
+            {!showSuccessOverlay ? (
+              <>
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Creating appointment...
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Please do not refresh or close the page
+                </p>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-8 w-8 text-green-600" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Appointment created successfully!
+                </p>
+                {emailWarning && (
+                  <p className="mt-1 text-xs text-yellow-600">
+                    Note: Confirmation email could not be sent
+                  </p>
+                )}
+                <div className="mt-4 space-y-2">
+                  <Button
+                    onClick={handleAddToCalendar}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <CalendarIcon2 className="h-4 w-4 mr-2" />
+                    Add to Google Calendar
+                  </Button>
+                  <Button
+                    onClick={handleCloseSuccessModal}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
         <DialogHeader>
@@ -1163,7 +1261,7 @@ export function CreateAppointmentModal({
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Appointment"}
+                Create Appointment
               </Button>
             </div>
           </form>

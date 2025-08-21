@@ -42,6 +42,12 @@ serve(async (req) => {
     )
 
     const { appointmentId, therapistId, clientId } = await req.json()
+    
+    console.log('Received parameters:', { appointmentId, therapistId, clientId })
+    
+    if (!appointmentId || !therapistId || !clientId) {
+      throw new Error(`Missing required parameters: appointmentId=${appointmentId}, therapistId=${therapistId}, clientId=${clientId}`)
+    }
 
     // Create a meeting using Dyte's API
     const response = await fetch('https://api.dyte.io/v2/meetings', {
@@ -124,7 +130,9 @@ serve(async (req) => {
   }
 })
 
-async function createParticipantToken(meetingId: string, role: 'host' | 'participant', clientId: string) {
+async function createParticipantToken(meetingId: string, role: 'host' | 'participant', participantId: string) {
+  console.log('Creating participant token:', { meetingId, role, participantId })
+  
   const response = await fetch(`https://api.dyte.io/v2/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: {
@@ -132,9 +140,9 @@ async function createParticipantToken(meetingId: string, role: 'host' | 'partici
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      name: clientId,
+      name: role === 'host' ? 'Therapist' : 'Client',
       preset_name: role === 'host' ? 'group_call_host' : 'group_call_participant',
-      custom_participant_id: clientId,
+      custom_participant_id: participantId,
     }),
   })
 
