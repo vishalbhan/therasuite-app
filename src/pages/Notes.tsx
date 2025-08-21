@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { FileText, Eye, History, ChevronDown } from 'lucide-react';
+import { FileText, History, ChevronDown } from 'lucide-react';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -159,48 +159,46 @@ export default function Notes() {
       
       {/* Desktop Table View */}
       <div className="hidden md:block rounded-md border">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Date</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Notes</th>
-              <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
+              <th className="py-4 px-4 text-left font-medium text-gray-500 w-1/4">Client</th>
+              <th className="py-4 px-4 text-left font-medium text-gray-500 w-1/6">Date</th>
+              <th className="py-4 px-4 text-left font-medium text-gray-500 w-2/5">Notes</th>
+              <th className="py-4 px-4 text-right font-medium text-gray-500 w-1/4"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filteredNotes.map((note) => (
-              <tr key={note.id} className="hover:bg-gray-50">
-                <td className="py-4 px-4">
-                  <div className="font-medium">{note.decrypted_client_name}</div>
-                  <div className="text-sm text-gray-500">{note.decrypted_client_email}</div>
+              <tr 
+                key={note.id} 
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => setViewingNotes({
+                  appointmentId: note.id,
+                  notes: note.notes,
+                  price: note.price
+                })}
+              >
+                <td className="py-4 px-4 w-1/4">
+                  <div className="font-medium truncate">{note.decrypted_client_name}</div>
+                  <div className="text-sm text-gray-500 truncate">{note.decrypted_client_email}</div>
                 </td>
-                <td className="py-4 px-4 text-gray-500">
+                <td className="py-4 px-4 text-gray-500 w-1/6">
                   {format(new Date(note.session_date), 'MMM d, yyyy')}
                 </td>
-                <td className="py-4 px-4">
-                  <div className="text-sm text-gray-600">
+                <td className="py-4 px-4 w-2/5">
+                  <div className="text-sm text-gray-600 break-words">
                     {truncateText(note.notes, 80)}
                   </div>
                 </td>
-                <td className="py-4 px-4 text-right space-x-2">
+                <td className="py-4 px-4 text-right w-1/4">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setViewingNotes({
-                      appointmentId: note.id,
-                      notes: note.notes,
-                      price: note.price
-                    })}
-                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                  >
-                    <Eye className="h-4 w-4 mr-0.5" />
-                    View Note
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(`/clients/${note.client_id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/clients/${note.client_id}`);
+                    }}
                     className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
                   >
                     <History className="h-4 w-4 mr-0.5" />
@@ -218,7 +216,12 @@ export default function Notes() {
         {filteredNotes.map((note) => (
           <div 
             key={note.id}
-            className="bg-white rounded-lg border shadow-sm p-4 space-y-4"
+            className="bg-white rounded-lg border shadow-sm p-4 space-y-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setViewingNotes({
+              appointmentId: note.id,
+              notes: note.notes,
+              price: note.price
+            })}
           >
             <div>
               <div className="font-medium">{note.decrypted_client_name}</div>
@@ -232,25 +235,15 @@ export default function Notes() {
               {truncateText(note.notes, 100)}
             </div>
 
-            <div className="flex space-x-2 pt-2 border-t">
+            <div className="flex justify-end pt-2 border-t">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setViewingNotes({
-                  appointmentId: note.id,
-                  notes: note.notes,
-                  price: note.price
-                })}
-                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-              >
-                <Eye className="h-4 w-4 mr-1.5" />
-                View Note
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(`/clients/${note.client_id}`)}
-                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/clients/${note.client_id}`);
+                }}
+                className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
               >
                 <History className="h-4 w-4 mr-1.5" />
                 Client History
