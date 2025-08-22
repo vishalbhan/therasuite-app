@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { encryptSingleValue, decryptSingleValue } from "@/lib/encryption";
 
 interface NotesModalProps {
   open: boolean;
@@ -41,7 +42,17 @@ export function NotesModal({
   const { currency } = useCurrency();
 
   useEffect(() => {
-    setNotes(existingNotes);
+    const decryptExistingNotes = async () => {
+      if (existingNotes) {
+        const decryptedNotes = await decryptSingleValue(existingNotes);
+        setNotes(decryptedNotes);
+      } else {
+        setNotes('');
+      }
+    };
+    
+    decryptExistingNotes();
+    
     if (!hideSessionDetails) {
       setFinalPrice(currentPrice.toString());
     }
@@ -51,8 +62,11 @@ export function NotesModal({
     try {
       setIsSaving(true);
       
+      // Encrypt the notes before saving
+      const encryptedNotes = await encryptSingleValue(notes);
+      
       const updatePayload: { notes: string; status?: string; price?: number } = {
-        notes,
+        notes: encryptedNotes,
       };
 
       if (!hideSessionDetails) {

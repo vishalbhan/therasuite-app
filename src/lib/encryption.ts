@@ -145,3 +145,48 @@ export async function decryptSingleValue(value: string): Promise<string> {
 export function isEncrypted(value: string): boolean {
   return value.startsWith('enc:');
 }
+
+/**
+ * Encrypts a single value (like notes)
+ */
+export async function encryptSingleValue(value: string): Promise<string> {
+  // If value is empty or already encrypted, return as-is
+  if (!value || isEncrypted(value)) {
+    return value;
+  }
+
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      throw new Error('No active session');
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/encrypt-client-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.session.access_token}`
+      },
+      body: JSON.stringify({
+        action: 'encrypt_single',
+        data: {
+          value: value
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Encryption failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.details || 'Encryption failed');
+    }
+
+    return result.data.value;
+  } catch (error) {
+    console.error('Error encrypting single value:', error);
+    throw new Error('Failed to encrypt value');
+  }
+}

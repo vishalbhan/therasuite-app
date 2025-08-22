@@ -81,6 +81,7 @@ export default function ClientDetails() {
   const [decryptedName, setDecryptedName] = useState<string>('');
   const [decryptedEmail, setDecryptedEmail] = useState<string>('');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [decryptedAppointments, setDecryptedAppointments] = useState<(Appointment & { decryptedNotes?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewingNotes, setViewingNotes] = useState<{
@@ -133,6 +134,15 @@ export default function ClientDetails() {
 
         if (appointmentsError) throw appointmentsError;
         setAppointments(appointmentsData as Appointment[] || []);
+
+        // Decrypt notes for appointments
+        const decryptedAppts = await Promise.all(
+          (appointmentsData as Appointment[] || []).map(async (appointment) => ({
+            ...appointment,
+            decryptedNotes: appointment.notes ? await decryptSingleValue(appointment.notes) : undefined
+          }))
+        );
+        setDecryptedAppointments(decryptedAppts);
       } catch (error) {
         toast.error("Error fetching client details");
       } finally {
@@ -427,17 +437,17 @@ export default function ClientDetails() {
         ) : (
           <div className="space-y-8">
             {/* Today's Appointments */}
-            {categorizeAppointments(appointments).today.length > 0 && (
+            {categorizeAppointments(decryptedAppointments).today.length > 0 && (
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Today</h3>
                 <div className="space-y-4">
-                  {categorizeAppointments(appointments).today.map((appointment) => (
+                  {categorizeAppointments(decryptedAppointments).today.map((appointment) => (
                     <AppointmentCard
                       key={appointment.id}
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.notes || ''
+                        notes: appointment.decryptedNotes || ''
                       })}
                     />
                   ))}
@@ -446,17 +456,17 @@ export default function ClientDetails() {
             )}
 
             {/* Recent Appointments - Moved before Upcoming */}
-            {categorizeAppointments(appointments).recent.length > 0 && (
+            {categorizeAppointments(decryptedAppointments).recent.length > 0 && (
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Recent</h3>
                 <div className="space-y-4">
-                  {categorizeAppointments(appointments).recent.map((appointment) => (
+                  {categorizeAppointments(decryptedAppointments).recent.map((appointment) => (
                     <AppointmentCard
                       key={appointment.id}
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.notes || ''
+                        notes: appointment.decryptedNotes || ''
                       })}
                     />
                   ))}
@@ -465,17 +475,17 @@ export default function ClientDetails() {
             )}
 
             {/* Upcoming Appointments - Moved after Recent */}
-            {categorizeAppointments(appointments).upcoming.length > 0 && (
+            {categorizeAppointments(decryptedAppointments).upcoming.length > 0 && (
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Upcoming</h3>
                 <div className="space-y-4">
-                  {categorizeAppointments(appointments).upcoming.map((appointment) => (
+                  {categorizeAppointments(decryptedAppointments).upcoming.map((appointment) => (
                     <AppointmentCard
                       key={appointment.id}
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.notes || ''
+                        notes: appointment.decryptedNotes || ''
                       })}
                     />
                   ))}
@@ -527,7 +537,7 @@ const AppointmentCard = ({
   appointment, 
   onClick 
 }: { 
-  appointment: Appointment; 
+  appointment: Appointment & { decryptedNotes?: string }; 
   onClick: () => void;
 }) => (
   <div
@@ -542,11 +552,11 @@ const AppointmentCard = ({
         <div className="text-sm text-gray-500">
           {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
         </div>
-        {appointment.notes && (
+        {appointment.decryptedNotes && (
           <div className="mt-2 flex items-center gap-2">
             <Eye className="h-4 w-4 text-blue-500" />
             <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
-              {appointment.notes}
+              {appointment.decryptedNotes}
             </div>
           </div>
         )}

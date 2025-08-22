@@ -168,6 +168,14 @@ serve(async (req) => {
         break
       }
       
+      case 'encrypt_single': {
+        const { value } = requestData
+        responseData = {
+          value: await encryptData(value, key)
+        }
+        break
+      }
+      
       default:
         throw new Error(`Unsupported action: ${action}`)
     }

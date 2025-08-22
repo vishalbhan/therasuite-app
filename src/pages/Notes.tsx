@@ -24,6 +24,7 @@ interface Note {
 interface DecryptedNote extends Note {
   decrypted_client_name: string;
   decrypted_client_email: string;
+  decrypted_notes: string;
 }
 
 // Helper function to truncate text
@@ -79,13 +80,14 @@ export default function Notes() {
         setNotes(prev => [...prev, ...(data as Note[])]);
       }
 
-      // Decrypt client names and emails
+      // Decrypt client names, emails, and notes
       const notesToDecrypt = replace ? (data as Note[]) : (data as Note[]);
       const decryptedNotesData = await Promise.all(
         notesToDecrypt.map(async (note) => ({
           ...note,
           decrypted_client_name: await decryptSingleValue(note.client_name),
-          decrypted_client_email: await decryptSingleValue(note.client_email)
+          decrypted_client_email: await decryptSingleValue(note.client_email),
+          decrypted_notes: await decryptSingleValue(note.notes)
         }))
       );
 
@@ -175,7 +177,7 @@ export default function Notes() {
                 className="hover:bg-gray-50 cursor-pointer"
                 onClick={() => setViewingNotes({
                   appointmentId: note.id,
-                  notes: note.notes,
+                  notes: note.decrypted_notes,
                   price: note.price
                 })}
               >
@@ -188,7 +190,7 @@ export default function Notes() {
                 </td>
                 <td className="py-4 px-4 w-2/5">
                   <div className="text-sm text-gray-600 break-words">
-                    {truncateText(note.notes, 80)}
+                    {truncateText(note.decrypted_notes, 80)}
                   </div>
                 </td>
                 <td className="py-4 px-4 text-right w-1/4">
@@ -219,7 +221,7 @@ export default function Notes() {
             className="bg-white rounded-lg border shadow-sm p-4 space-y-4 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => setViewingNotes({
               appointmentId: note.id,
-              notes: note.notes,
+              notes: note.decrypted_notes,
               price: note.price
             })}
           >
@@ -232,7 +234,7 @@ export default function Notes() {
             </div>
 
             <div className="text-sm text-gray-600 line-clamp-3">
-              {truncateText(note.notes, 100)}
+              {truncateText(note.decrypted_notes, 100)}
             </div>
 
             <div className="flex justify-end pt-2 border-t">

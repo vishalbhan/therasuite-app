@@ -33,6 +33,7 @@ interface Appointment {
   price: number;
   client_email: string;
   notes?: string;
+  decrypted_notes?: string;
   video_provider: string;
   custom_meeting_link: string;
   location?: string;
@@ -724,12 +725,12 @@ export function AppointmentsList({
                               </Button>
                             </div>
                           )}
-                          {appointment.notes && (
+                          {appointment.decrypted_notes && (
                             <div className="mt-4">
                               <div className="flex items-center justify-between gap-4">
                                 {renderNotes && (
                                   <div className="flex-1">
-                                    {renderNotes(appointment.notes)}
+                                    {renderNotes(appointment.decrypted_notes)}
                                   </div>
                                 )}
                                 
@@ -740,7 +741,7 @@ export function AppointmentsList({
                                     e.stopPropagation();
                                     setViewingNotes({
                                       appointmentId: appointment.id,
-                                      notes: appointment.notes
+                                      notes: appointment.decrypted_notes || ''
                                     });
                                   }}
                                 >
@@ -916,12 +917,12 @@ export function AppointmentsList({
                   </Button>
                 </div>
               )}
-              {appointment.notes && (
+              {appointment.decrypted_notes && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between gap-4">
                     {renderNotes && (
                       <div className="flex-1">
-                        {renderNotes(appointment.notes)}
+                        {renderNotes(appointment.decrypted_notes)}
                       </div>
                     )}
                     
@@ -932,7 +933,7 @@ export function AppointmentsList({
                         e.stopPropagation();
                         setViewingNotes({
                           appointmentId: appointment.id,
-                          notes: appointment.notes
+                          notes: appointment.decrypted_notes || ''
                         });
                       }}
                     >
