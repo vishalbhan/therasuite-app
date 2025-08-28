@@ -87,6 +87,7 @@ export default function ClientDetails() {
   const [viewingNotes, setViewingNotes] = useState<{
     appointmentId: string;
     notes: string;
+    price: number;
   } | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [diagnosis, setDiagnosis] = useState<string>('');
@@ -269,7 +270,7 @@ export default function ClientDetails() {
 
       <div className="flex items-center gap-4 mb-8">
         <div
-          className="w-16 h-16 rounded-full flex items-center justify-center text-white font-semibold text-2xl"
+          className="w-16 h-16 rounded-full flex items-center justify-center text-black font-semibold text-2xl"
           style={{ backgroundColor: client.avatar_color }}
         >
           {client.initials}
@@ -447,7 +448,8 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || ''
+                        notes: appointment.decryptedNotes || '',
+                        price: appointment.price
                       })}
                     />
                   ))}
@@ -466,7 +468,8 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || ''
+                        notes: appointment.decryptedNotes || '',
+                        price: appointment.price
                       })}
                     />
                   ))}
@@ -485,7 +488,8 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || ''
+                        notes: appointment.decryptedNotes || '',
+                        price: appointment.price
                       })}
                     />
                   ))}
@@ -516,6 +520,10 @@ export default function ClientDetails() {
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+        callStartTime={null}
+        callEndTime={null}
+        currentPrice={viewingNotes?.price || 0}
+        hideSessionDetails={true}
       />
 
       <ConfirmModal

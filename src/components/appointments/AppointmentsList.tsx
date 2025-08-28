@@ -133,6 +133,7 @@ export function AppointmentsList({
   const [viewingNotes, setViewingNotes] = useState<{
     appointmentId: string;
     notes: string;
+    price: number;
   } | null>(null);
   const [startingCall, setStartingCall] = useState<string | null>(null);
   const [copyingLink, setCopyingLink] = useState<string | null>(null);
@@ -788,7 +789,8 @@ export function AppointmentsList({
                                     e.stopPropagation();
                                     setViewingNotes({
                                       appointmentId: appointment.id,
-                                      notes: appointment.decrypted_notes || ''
+                                      notes: appointment.decrypted_notes || '',
+                                      price: appointment.price
                                     });
                                   }}
                                 >
@@ -984,7 +986,8 @@ export function AppointmentsList({
                         e.stopPropagation();
                         setViewingNotes({
                           appointmentId: appointment.id,
-                          notes: appointment.decrypted_notes || ''
+                          notes: appointment.decrypted_notes || '',
+                          price: appointment.price
                         });
                       }}
                     >
@@ -1025,6 +1028,7 @@ export function AppointmentsList({
         onOpenChange={(open) => !open && setViewingNotes(null)}
         appointmentId={viewingNotes?.appointmentId || ''}
         existingNotes={viewingNotes?.notes || ''}
+        currentPrice={viewingNotes?.price || 0}
         callStartTime={null}
         callEndTime={null}
       />

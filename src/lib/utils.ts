@@ -23,19 +23,7 @@ export function getInitials(name: string): string {
 }
 
 export function generateRandomColor(): string {
-  const colors = [
-    "#FF5733", // Red-Orange
-    "#33FF57", // Green
-    "#3357FF", // Blue
-    "#FF33F5", // Pink
-    "#33FFF5", // Cyan
-    "#F5FF33", // Yellow
-    "#FF3333", // Red
-    "#33FF33", // Lime
-    "#3333FF", // Deep Blue
-    "#FF33B5", // Rose
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
+  return "#E9D5FF"; // Light purple brand color
 }
 
 export const getCurrencySymbol = (currency: string) => {
