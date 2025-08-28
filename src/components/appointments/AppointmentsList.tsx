@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { format, addMinutes, isWithinInterval, startOfWeek, endOfWeek, isSameDay, compareAsc, addDays, addWeeks, subWeeks, subDays } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard, Bell, Loader2, CheckCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Video, MapPin, MoreVertical, Eye, CalendarPlus, History, XCircle, ChevronLeft, ChevronRight, Check, Copy, CreditCard, Bell, Loader2, CheckCircle, Calendar as CalendarIcon2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { EditAppointmentModal } from "./EditAppointmentModal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -474,6 +474,49 @@ export function AppointmentsList({
     }
   };
 
+  const generateGoogleCalendarUrl = (appointment: Appointment) => {
+    const startDate = new Date(appointment.session_date);
+    const endDate = addMinutes(startDate, appointment.session_length);
+    
+    // Format dates for Google Calendar (YYYYMMDDTHHMMSSZ)
+    const formatDateForGoogle = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    
+    const title = `TheraSuite Appointment with ${appointment.decrypted_client_name || appointment.client_name}`;
+    const startTime = formatDateForGoogle(startDate);
+    const endTime = formatDateForGoogle(endDate);
+    
+    let description = `Session Type: ${appointment.session_type === 'video' ? 'Video Call' : 'In Person'}\n`;
+    description += `Duration: ${appointment.session_length} minutes\n`;
+    
+    if (appointment.session_type === 'video') {
+      if (appointment.video_provider === 'therasuite') {
+        description += `Video Platform: TheraSuite Video`;
+      } else {
+        description += `Video Platform: ${appointment.video_provider === 'google_meet' ? 'Google Meet' : 'Zoom'}`;
+      }
+    } else {
+      if (appointment.location) {
+        description += `Location: ${appointment.location}`;
+      }
+    }
+    
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title,
+      dates: `${startTime}/${endTime}`,
+      details: description,
+    });
+    
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  const handleAddToCalendar = (appointment: Appointment) => {
+    const calendarUrl = generateGoogleCalendarUrl(appointment);
+    window.open(calendarUrl, '_blank');
+  };
+
   const handlePreviousWeek = () => {
     if (onDateChange) {
       if (isWeekView) {
@@ -618,6 +661,10 @@ export function AppointmentsList({
                                     <DropdownMenuItem onClick={() => handleEdit(appointment)}>
                                       <CalendarPlus className="h-4 w-4 mr-2" />
                                       Reschedule
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleAddToCalendar(appointment)}>
+                                      <CalendarIcon2 className="h-4 w-4 mr-2" />
+                                      Add to Google Calendar
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
                                       onClick={() => setPriceUpdateAppointment(appointment)}
@@ -810,6 +857,10 @@ export function AppointmentsList({
                         <DropdownMenuItem onClick={() => handleEdit(appointment)}>
                           <CalendarPlus className="h-4 w-4 mr-2" />
                           Reschedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAddToCalendar(appointment)}>
+                          <CalendarIcon2 className="h-4 w-4 mr-2" />
+                          Add to Google Calendar
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => setPriceUpdateAppointment(appointment)}
