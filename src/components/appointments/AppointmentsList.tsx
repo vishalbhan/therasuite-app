@@ -56,27 +56,48 @@ type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 function AppointmentSkeleton() {
   return (
-    <div className="border rounded-lg p-4 hover:shadow transition-shadow animate-pulse">
+    <div className="border rounded-lg p-4 hover:shadow transition-shadow overflow-hidden">
       <div className="flex justify-between items-start">
-        <div className="space-y-3">
-          <div className="h-5 w-32 bg-gray-200 rounded"></div>
-          
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-gray-200 rounded"></div>
-            <div className="h-4 w-40 bg-gray-200 rounded"></div>
+        <div className="space-y-3 flex-1">
+          {/* Time skeleton */}
+          <div className="relative h-5 w-32 bg-gray-200 rounded overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 bg-gray-200 rounded"></div>
-            <div className="h-4 w-24 bg-gray-200 rounded"></div>
+          {/* Client name skeleton */}
+          <div className="relative h-6 w-48 bg-gray-200 rounded overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
           </div>
           
-          <div className="h-4 w-16 bg-gray-200 rounded"></div>
+          {/* Duration skeleton */}
+          <div className="flex items-center gap-2">
+            <div className="relative h-4 w-16 bg-gray-200 rounded overflow-hidden">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+            </div>
+          </div>
+          
+          {/* Session type skeleton */}
+          <div className="flex items-center gap-2">
+            <div className="relative h-4 w-24 bg-gray-200 rounded overflow-hidden">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+            </div>
+          </div>
+          
+          {/* Price skeleton */}
+          <div className="relative h-4 w-20 bg-gray-200 rounded overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+          {/* Status badge skeleton */}
+          <div className="relative h-6 w-20 bg-gray-200 rounded-full overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+          </div>
+          {/* Menu button skeleton */}
+          <div className="relative h-8 w-8 bg-gray-200 rounded overflow-hidden">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -577,7 +598,7 @@ export function AppointmentsList({
         </div>
       </div>
       
-      {loading ? (
+      {loading || (appointments.length > 0 && decryptedAppointments.length === 0) ? (
         <div className="space-y-4">
           <AppointmentSkeleton />
           <AppointmentSkeleton />

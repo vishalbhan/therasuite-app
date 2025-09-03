@@ -20,16 +20,19 @@ import { Users } from "lucide-react";
 export type Appointment = {
   id: string;
   therapist_id: string;
-  client_id?: string;
-  client_name?: string;
-  client_email?: string;
+  client_id: string;
+  client_name: string;
+  client_email: string;
   session_date: string;
   session_length: number;
-  session_type: 'video' | 'in-person';
+  session_type: 'video' | 'in_person';
   status: 'scheduled' | 'completed' | 'cancelled';
   notes?: string | null;
-  price?: number;
+  price: number;
   created_at?: string;
+  video_provider: string;
+  custom_meeting_link: string;
+  therapist_name: string;
 };
 
 export default function Dashboard() {
@@ -218,9 +221,7 @@ export default function Dashboard() {
     calculateStats();
   }, []);
 
-  if (loading && appointments.length === 0) {
-    return <LoadingScreen />;
-  }
+
 
   return (
     <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
@@ -303,6 +304,8 @@ export default function Dashboard() {
           <AppointmentsList
             appointments={appointments}
             selectedDate={selectedDate}
+            isWeekView={false}
+            loading={loading}
             onUpdate={fetchAppointments}
             onDateChange={handleDateChange}
             renderNotes={(notes) => notes && (
