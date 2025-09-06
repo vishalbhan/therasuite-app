@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { decryptSingleValue } from "@/lib/encryption";
 
 interface Appointment {
   id: string;
@@ -24,6 +26,27 @@ export function AppointmentDetailsModal({
   onOpenChange,
   actions
 }: AppointmentDetailsModalProps) {
+  const [decryptedClientName, setDecryptedClientName] = useState<string>('');
+
+  useEffect(() => {
+    const decryptClientName = async () => {
+      if (appointment?.client_name) {
+        try {
+          const decrypted = await decryptSingleValue(appointment.client_name);
+          setDecryptedClientName(decrypted);
+        } catch (error) {
+          console.error('Error decrypting client name:', error);
+          // Fallback to original value if decryption fails
+          setDecryptedClientName(appointment.client_name);
+        }
+      }
+    };
+
+    if (appointment) {
+      decryptClientName();
+    }
+  }, [appointment]);
+
   if (!appointment) return null;
 
   return (
@@ -36,7 +59,7 @@ export function AppointmentDetailsModal({
         <div className="space-y-4">
           <div>
             <h3 className="font-medium">Client</h3>
-            <p className="text-gray-600">{appointment.client_name}</p>
+            <p className="text-gray-600">{decryptedClientName || appointment.client_name}</p>
           </div>
 
           <div>
@@ -63,7 +86,7 @@ export function AppointmentDetailsModal({
             <Badge 
               className="mt-1"
               variant={
-                appointment.status === 'completed' ? 'success' :
+                appointment.status === 'completed' ? 'secondary' :
                 appointment.status === 'cancelled' ? 'destructive' : 'default'
               }
             >
