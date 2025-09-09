@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { decryptSingleValue, encryptClientData } from '@/lib/encryption';
+import { AIClientNotesSummary } from '@/components/clients/AIClientNotesSummary';
 
 // Update the Database type definition to include the new fields
 type Database = {
@@ -326,7 +327,7 @@ export default function ClientDetails() {
         </div>
       </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white shadow-lg rounded-xl">
         <CardContent className="pt-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Client Information</h2>
@@ -407,7 +408,9 @@ export default function ClientDetails() {
         </CardContent>
       </Card>
 
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <AIClientNotesSummary clientId={clientId || ''} />
+
+      <div className="p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4 md:gap-0">
           <h2 className="text-xl font-semibold">Appointment History</h2>
           <div className="flex items-center bg-primary/5 rounded-lg p-1 self-start md:self-center">
@@ -550,7 +553,7 @@ const AppointmentCard = ({
 }) => (
   <div
     onClick={onClick}
-    className="border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
+    className="border p-4 hover:shadow-sm transition-shadow cursor-pointer bg-white shadow-sm rounded-xl"
   >
     <div className="flex justify-between items-start">
       <div className="flex-grow">
