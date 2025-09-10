@@ -327,7 +327,7 @@ export default function ClientDetails() {
         </div>
       </div>
 
-      <Card className="mb-6 bg-white shadow-lg rounded-xl">
+      {/* <Card className="mb-6 bg-white shadow-lg rounded-xl">
         <CardContent className="pt-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Client Information</h2>
@@ -406,7 +406,7 @@ export default function ClientDetails() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <AIClientNotesSummary clientId={clientId || ''} />
 

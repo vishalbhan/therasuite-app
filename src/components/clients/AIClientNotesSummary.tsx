@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { decryptSingleValue } from '@/lib/encryption';
 import { toast } from 'sonner';
 import { RefreshCw, Sparkles } from 'lucide-react';
-import OpenAI from 'openai';
+import ReactMarkdown from 'react-markdown';
 
 interface AIClientNotesSummaryProps {
   clientId: string;
@@ -20,22 +19,56 @@ interface AppointmentNote {
   session_length: number;
 }
 
+
 export function AIClientNotesSummary({ clientId }: AIClientNotesSummaryProps) {
   const [summary, setSummary] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState<AppointmentNote[]>([]);
   const [hasNotes, setHasNotes] = useState(false);
 
-  // Initialize OpenAI client
-  const openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Note: In production, this should be handled server-side
-  });
+
+  const saveSummaryToDatabase = async (summary: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found when saving summary');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('clients')
+        .update({ ai_summary: summary })
+        .eq('id', clientId)
+        .eq('therapist_id', user.id);
+
+      if (error) {
+        console.error('Error saving AI summary to database:', error);
+        toast.error('Failed to save summary to database');
+      }
+    } catch (error) {
+      console.error('Error saving AI summary:', error);
+      toast.error('Failed to save summary to database');
+    }
+  };
 
   const fetchClientNotes = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch client data including existing AI summary
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('ai_summary')
+        .eq('id', clientId)
+        .eq('therapist_id', user.id)
+        .single();
+
+      if (clientError) {
+        console.error('Error fetching client data:', clientError);
+      } else if (clientData?.ai_summary) {
+        setSummary(clientData.ai_summary);
+      }
 
       // Fetch all appointments with notes for this client
       const { data: appointmentsData, error } = await supabase
@@ -51,7 +84,9 @@ export function AIClientNotesSummary({ clientId }: AIClientNotesSummaryProps) {
 
       if (!appointmentsData || appointmentsData.length === 0) {
         setHasNotes(false);
-        setSummary('No therapy notes available for this client yet.');
+        if (!clientData?.ai_summary) {
+          setSummary('No therapy notes available for this client yet.');
+        }
         return;
       }
 
@@ -79,33 +114,44 @@ export function AIClientNotesSummary({ clientId }: AIClientNotesSummaryProps) {
 
     setLoading(true);
     try {
-      // Prepare notes text for OpenAI
-      const notesText = notes.map((note, index) => 
-        `Session ${index + 1} (${new Date(note.session_date).toLocaleDateString()}, ${note.session_type}, ${note.session_length} min):\n${note.notes}`
-      ).join('\n\n');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Authentication required');
+        return;
+      }
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional therapy assistant. Analyze the following therapy session notes and provide a comprehensive summary that includes: 1) Key themes and patterns, 2) Client's progress and improvements, 3) Ongoing challenges, 4) Treatment approaches that are working, 5) Recommendations for future sessions. Keep the summary professional, concise, and focused on therapeutic insights."
-          },
-          {
-            role: "user",
-            content: `Please summarize these therapy session notes:\n\n${notesText}`
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
+      // Call the Supabase Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/generate-ai-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          notes: notes
+        })
       });
 
-      const generatedSummary = completion.choices[0]?.message?.content || 'Unable to generate summary';
-      setSummary(generatedSummary);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to generate summary');
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.details || 'Failed to generate summary');
+      }
+
+      setSummary(result.summary);
+      
+      // Save the summary to the clients table
+      await saveSummaryToDatabase(result.summary);
+      
       toast.success('AI summary generated successfully');
     } catch (error) {
       console.error('Error generating AI summary:', error);
-      toast.error('Failed to generate AI summary. Please check your OpenAI API key.');
+      toast.error(`Failed to generate AI summary: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -146,17 +192,33 @@ export function AIClientNotesSummary({ clientId }: AIClientNotesSummaryProps) {
             <p className="text-sm">Complete some appointments with notes to generate an AI summary</p>
           </div>
         ) : (
-          <Textarea
-            id="ai-summary"
-            value={summary || 'Click "Generate Summary" to create an AI-powered analysis of this client\'s therapy notes.'}
-            disabled={true}
-            className="min-h-[120px] bg-gray-50 text-gray-700"
-          />
+          <div className="min-h-[180px] rounded-md p-4">
+            {summary ? (
+              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+                <ReactMarkdown
+                  components={{
+                    p: ({node, ...props}) => (
+                      <p style={{ marginBottom: '1rem' }} {...props} />
+                    ),
+                  }}
+                >
+                  {summary}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="text-center h-full">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">Generate summary based on client notes</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
         
         {hasNotes && (
           <div className="mt-3 text-xs text-gray-500">
-            Based on {notes.length} therapy session{notes.length !== 1 ? 's' : ''}
+            Based on notes from {notes.length} therapy session{notes.length !== 1 ? 's' : ''}
           </div>
         )}
       </CardContent>
