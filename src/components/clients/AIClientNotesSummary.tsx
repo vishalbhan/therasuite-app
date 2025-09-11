@@ -218,7 +218,7 @@ export function AIClientNotesSummary({ clientId }: AIClientNotesSummaryProps) {
         
         {hasNotes && (
           <div className="mt-3 text-xs text-gray-500">
-            Based on notes from {notes.length} therapy session{notes.length !== 1 ? 's' : ''}
+            Based on notes from {notes.length} session{notes.length !== 1 ? 's' : ''}
           </div>
         )}
       </CardContent>

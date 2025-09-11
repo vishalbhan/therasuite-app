@@ -35,7 +35,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
 import { Loader2, CheckCircle, Calendar as CalendarIcon2 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { encryptClientData, decryptSingleValue } from '@/lib/encryption';
@@ -302,6 +301,18 @@ export function CreateAppointmentModal({
     }
   }, [defaultDate, form]);
 
+  // Reset client mode when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      // Set initial client mode based on whether we have a default client
+      if (defaultClient) {
+        setClientMode('existing');
+      } else if (!disableClientFields) {
+        setClientMode('new');
+      }
+    }
+  }, [open, defaultClient, disableClientFields]);
+
   const isRecurring = form.watch('is_recurring');
 
   useEffect(() => {
@@ -309,8 +320,11 @@ export function CreateAppointmentModal({
       form.setValue('client_name', defaultClient.name);
       form.setValue('client_email', defaultClient.email);
       
-      // If disableClientFields is true, we need to find the matching client ID
-      if (disableClientFields && existingClients.length > 0) {
+      // Set client mode to existing when defaultClient is provided
+      setClientMode('existing');
+      
+      // Find the matching client ID from existing clients
+      if (existingClients.length > 0) {
         const matchingClient = existingClients.find(client => 
           (client.decrypted_email || client.email) === defaultClient.email
         );
@@ -319,7 +333,7 @@ export function CreateAppointmentModal({
         }
       }
     }
-  }, [defaultClient, form, disableClientFields, existingClients]);
+  }, [defaultClient, form, existingClients]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -873,45 +887,37 @@ export function CreateAppointmentModal({
                 />
 
                 <div className="space-y-4">
-                  <RadioGroup
-                    defaultValue="new"
-                    className="grid grid-cols-2 gap-4"
-                    onValueChange={(value: ClientSelectionMode) => {
-                      setClientMode(value);
-                      if (value === 'new') {
-                        form.setValue('client_name', '');
-                        form.setValue('client_email', '');
-                        setSelectedClientId('');
-                      }
-                    }}
-                  >
-                    <div>
-                      <RadioGroupItem
-                        value="new"
-                        id="new"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="new"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  <div className="p-1 rounded-lg" style={{ backgroundColor: '#f1e7ff' }}>
+                    <div className="grid grid-cols-2 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClientMode('new');
+                          form.setValue('client_name', '');
+                          form.setValue('client_email', '');
+                          setSelectedClientId('');
+                        }}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                          clientMode === 'new'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
                       >
-                        <span className="text-sm font-medium">New Client</span>
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem
-                        value="existing"
-                        id="existing"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="existing"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        New Client
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClientMode('existing')}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                          clientMode === 'existing'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
                       >
-                        <span className="text-sm font-medium">Existing Client</span>
-                      </Label>
+                        Existing Client
+                      </button>
                     </div>
-                  </RadioGroup>
+                  </div>
 
                   {clientMode === 'new' ? (
                     <FormField
