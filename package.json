@@ -12,6 +12,7 @@
     "server": "node server/index.ts",
     "encrypt-existing-data": "node encrypt-existing-data.js",
     "test-encryption": "node test-encryption.js",
+    "generate-vapid": "node scripts/generate-vapid-keys.js",
     "postinstall": "rm -rf node_modules/.cache"
   },
   "dependencies": {
@@ -58,6 +59,7 @@
     "@types/express": "^5.0.0",
     "@types/react-datepicker": "^7.0.0",
     "@types/react-helmet": "^6.1.11",
+    "@types/web-push": "^3.6.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -86,6 +88,7 @@
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",
     "vaul": "^0.9.3",
+    "web-push": "^3.6.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {

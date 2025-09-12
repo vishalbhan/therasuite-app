@@ -52,6 +52,48 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['profiles']['Row']>;
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+          updated_at: string;
+          is_active: boolean;
+        };
+        Insert: Omit<Database['public']['Tables']['push_subscriptions']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['push_subscriptions']['Row']>;
+      };
+      notification_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          appointment_reminder_enabled: boolean;
+          reminder_minutes_before: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['notification_preferences']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['notification_preferences']['Row']>;
+      };
+      notification_queue: {
+        Row: {
+          id: string;
+          user_id: string;
+          appointment_id: string;
+          notification_type: string;
+          scheduled_for: string;
+          sent_at?: string;
+          status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          retry_count: number;
+          error_message?: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['notification_queue']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['notification_queue']['Row']>;
+      };
     };
   };
 }

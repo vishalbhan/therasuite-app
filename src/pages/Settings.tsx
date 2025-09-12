@@ -50,6 +50,7 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PushNotificationSettings } from '@/components/notifications/PushNotificationSettings';
 
 // Update the formSchema to handle the initial state better
 const formSchema = z.object({
@@ -596,6 +597,8 @@ export default function Settings() {
               </div>
             </>
           )}
+
+          <PushNotificationSettings />
 
           <Separator className="my-8" />
 

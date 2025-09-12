@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png'],
       manifest: {
         name: 'TheraSuite App',
@@ -61,18 +64,6 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\./,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
       }
     })
   ].filter(Boolean),
