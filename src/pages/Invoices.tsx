@@ -626,13 +626,13 @@ export default function Invoices() {
         </div>
       </div>
 
-      <div className="flex items-center justify-end mb-4 gap-2">
+      <div className="flex sm:justify-end mb-4 gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="text-gray-700 hover:text-primary hover:bg-primary/5"
+              className="flex-1 sm:flex-initial text-gray-700 hover:text-primary hover:bg-primary/5"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               {selectedStatus === 'all'
@@ -678,7 +678,7 @@ export default function Invoices() {
             <Button
               variant="outline"
               size="sm"
-              className="text-gray-700 hover:text-primary hover:bg-primary/5"
+              className="flex-1 sm:flex-initial text-gray-700 hover:text-primary hover:bg-primary/5"
             >
               <User className="h-4 w-4 mr-2" />
               {selectedClient === 'all' ? 'All Clients' : selectedClient}

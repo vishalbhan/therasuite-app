@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn, getInitials, generateRandomColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -246,6 +255,517 @@ type Database = {
   };
 };
 
+// Form component to be used in both Dialog and Drawer
+function CreateAppointmentForm({
+  form,
+  onSubmit,
+  formError,
+  isSubmitting,
+  isCreatingMultiple,
+  createdCount,
+  showSuccessOverlay,
+  emailWarning,
+  clientMode,
+  setClientMode,
+  existingClients,
+  selectedClientId,
+  handleClientSelection,
+  disableClientFields,
+  isRecurring,
+  currency,
+  createdAppointmentData,
+  handleAddToCalendar,
+  handleCloseSuccessModal,
+  className
+}: {
+  form: any;
+  onSubmit: (values: FormValues) => Promise<void>;
+  formError: string | null;
+  isSubmitting: boolean;
+  isCreatingMultiple: boolean;
+  createdCount: number;
+  showSuccessOverlay: boolean;
+  emailWarning: boolean;
+  clientMode: ClientSelectionMode;
+  setClientMode: (mode: ClientSelectionMode) => void;
+  existingClients: ExistingClient[];
+  selectedClientId: string;
+  handleClientSelection: (clientId: string) => void;
+  disableClientFields: boolean;
+  isRecurring: boolean;
+  currency: string;
+  createdAppointmentData: FormValues | null;
+  handleAddToCalendar: () => void;
+  handleCloseSuccessModal: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      {isCreatingMultiple && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="mt-2 text-sm text-muted-foreground">
+            Creating appointments... ({createdCount} of {form.getValues('number_of_sessions')})
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Please do not refresh or close the page
+          </p>
+        </div>
+      )}
+      {((isSubmitting && !isCreatingMultiple) || showSuccessOverlay) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
+          {!showSuccessOverlay ? (
+            <>
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Creating appointment...
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Please do not refresh or close the page
+              </p>
+            </>
+          ) : (
+            <>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Appointment created successfully!
+              </p>
+              {emailWarning && (
+                <p className="mt-1 text-xs text-yellow-600">
+                  Note: Confirmation email could not be sent
+                </p>
+              )}
+              <div className="mt-4 space-y-2">
+                <Button
+                  onClick={handleAddToCalendar}
+                  className="w-full"
+                  variant="default"
+                >
+                  <CalendarIcon2 className="h-4 w-4 mr-2" />
+                  Add to Google Calendar
+                </Button>
+                <Button
+                  onClick={handleCloseSuccessModal}
+                  className="w-full"
+                  variant="outline"
+                >
+                  Close
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      
+      {formError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md mb-4">
+          {formError}
+        </div>
+      )}
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="is_recurring"
+                render={({ field }) => (
+                  <FormItem className={cn(
+                    "flex flex-row items-center justify-between rounded-lg border p-4",
+                    PURPLE_GRADIENT
+                  )}>
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Recurring Appointment</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Create multiple appointments at once
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4">
+                <div className="p-1 rounded-lg" style={{ backgroundColor: '#f1e7ff' }}>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClientMode('new');
+                        form.setValue('client_name', '');
+                        form.setValue('client_email', '');
+                      }}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                        clientMode === 'new'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      New Client
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientMode('existing')}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                        clientMode === 'existing'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Existing Client
+                    </button>
+                  </div>
+                </div>
+
+                {clientMode === 'new' ? (
+                  <FormField
+                    control={form.control}
+                    name="client_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="John Doe" 
+                            {...field} 
+                            disabled={disableClientFields}
+                            className={cn(
+                              disableClientFields && DISABLED_INPUT_BG
+                            )}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormItem>
+                    <FormLabel>Select Client</FormLabel>
+                    <select
+                      value={selectedClientId}
+                      onChange={(e) => handleClientSelection(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Select an existing client</option>
+                      {existingClients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.decrypted_name || client.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormItem>
+                )}
+              </div>
+
+              <FormField
+                control={form.control}
+                name="client_email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client Email</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="client@example.com" 
+                        {...field} 
+                        disabled={disableClientFields}
+                        className={cn(
+                          disableClientFields && DISABLED_INPUT_BG
+                        )}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Add any additional notes..."
+                        className="resize-none h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="space-y-4">
+              {isRecurring && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="number_of_sessions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Number of Sessions</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="2"
+                            max="52"
+                            {...field}
+                            value={field.value || ''}
+                            onChange={e => {
+                              const value = e.target.value;
+                              field.onChange(value === '' ? undefined : parseInt(value));
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="session_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <DatePicker
+                          selected={field.value}
+                          onChange={(date: Date) => field.onChange(date)}
+                          minDate={new Date()}
+                          placeholderText="Select date"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="session_time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {isRecurring && (
+                <FormField
+                  control={form.control}
+                  name="recurring_day"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Repeat Every</FormLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        {...field}
+                      >
+                        <option value="monday">Every Monday</option>
+                        <option value="tuesday">Every Tuesday</option>
+                        <option value="wednesday">Every Wednesday</option>
+                        <option value="thursday">Every Thursday</option>
+                        <option value="friday">Every Friday</option>
+                        <option value="saturday">Every Saturday</option>
+                        <option value="sunday">Every Sunday</option>
+                      </select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="session_length"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Session Length</FormLabel>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      {...field}
+                    >
+                      <option value="30">30 minutes</option>
+                      <option value="45">45 minutes</option>
+                      <option value="60">60 minutes</option>
+                      <option value="75">1 hour 15 minutes</option>
+                      <option value="90">1 hour 30 minutes</option>
+                      <option value="105">1 hour 45 minutes</option>
+                      <option value="120">2 hours</option>
+                      <option value="135">2 hours 15 minutes</option>
+                      <option value="150">2 hours 30 minutes</option>
+                      <option value="165">2 hours 45 minutes</option>
+                      <option value="180">3 hours</option>
+                    </select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="session_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Session Type</FormLabel>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      {...field}
+                    >
+                      <option value="video">Video Call</option>
+                      <option value="in_person">In Person</option>
+                    </select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('session_type') === 'in_person' && (
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input
+                          readOnly
+                          value={field.value && Object.values(field.value).some(v => v && v.trim() !== '') ? 
+                            `${field.value.address}, ${field.value.city}, ${field.value.state} - ${field.value.postal_code}, ${field.value.country}`
+                            : 'No location set - please update your location in Settings'
+                          }
+                          placeholder="No location set"
+                          className="text-muted-foreground"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {form.watch('session_type') === 'video' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="video_provider"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Video Provider</FormLabel>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          {...field}
+                          value={field.value || 'therasuite'}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Clear custom meeting link when switching to TheraSuite
+                            if (e.target.value === 'therasuite') {
+                              form.setValue('custom_meeting_link', null);
+                            }
+                          }}
+                          disabled={form.watch('is_recurring')} // Disable when recurring
+                        >
+                          <option value="therasuite">TheraSuite Video</option>
+                          <option value="google_meet">Google Meet</option>
+                          <option value="zoom">Zoom</option>
+                        </select>
+                        {form.watch('is_recurring') && (
+                          <p className="text-xs text-slate-600 text-muted-foreground mt-1">
+                            Recurring appointments must use TheraSuite Video
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch('video_provider') !== 'therasuite' && (
+                    <FormField
+                      control={form.control}
+                      name="custom_meeting_link"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Meeting Link</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="url"
+                              placeholder="https://meet.google.com/... or https://zoom.us/..."
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                field.onChange(e.target.value || null);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </>
+              )}
+
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2">
+                          {currency === 'USD' ? '$' : 
+                           currency === 'EUR' ? '€' : 
+                           currency === 'GBP' ? '£' : 
+                           currency === 'AUD' ? 'A$' : 
+                           currency === 'CAD' ? 'C$' : 
+                           '₹'}
+                        </span>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          className="pl-7"
+                          placeholder="0"
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
 export function CreateAppointmentModal({
   open,
   onOpenChange,
@@ -255,6 +775,7 @@ export function CreateAppointmentModal({
   disableClientFields = false
 }: CreateAppointmentModalProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
@@ -792,487 +1313,82 @@ export function CreateAppointmentModal({
     }
   }, [form.watch('session_date'), form.watch('is_recurring')]);
 
+  const formProps = {
+    form,
+    onSubmit,
+    formError,
+    isSubmitting,
+    isCreatingMultiple,
+    createdCount,
+    showSuccessOverlay,
+    emailWarning,
+    clientMode,
+    setClientMode,
+    existingClients,
+    selectedClientId,
+    handleClientSelection,
+    disableClientFields,
+    isRecurring,
+    currency,
+    createdAppointmentData,
+    handleAddToCalendar,
+    handleCloseSuccessModal,
+  };
+
+  if (!isMobile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] md:max-w-[800px] my-4">
+          <DialogHeader>
+            <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
+          </DialogHeader>
+          <CreateAppointmentForm {...formProps} />
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              onClick={form.handleSubmit(onSubmit)}
+            >
+              Create Appointment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[800px] my-4">
-        {isCreatingMultiple && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Creating appointments... ({createdCount} of {form.getValues('number_of_sessions')})
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Please do not refresh or close the page
-            </p>
-          </div>
-        )}
-        {((isSubmitting && !isCreatingMultiple) || showSuccessOverlay) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
-            {!showSuccessOverlay ? (
-              <>
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Creating appointment...
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Please do not refresh or close the page
-                </p>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-8 w-8 text-green-600" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Appointment created successfully!
-                </p>
-                {emailWarning && (
-                  <p className="mt-1 text-xs text-yellow-600">
-                    Note: Confirmation email could not be sent
-                  </p>
-                )}
-                <div className="mt-4 space-y-2">
-                  <Button
-                    onClick={handleAddToCalendar}
-                    className="w-full"
-                    variant="default"
-                  >
-                    <CalendarIcon2 className="h-4 w-4 mr-2" />
-                    Add to Google Calendar
-                  </Button>
-                  <Button
-                    onClick={handleCloseSuccessModal}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    Close
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        <DialogHeader>
-          <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
-        </DialogHeader>
-        {formError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md mb-4">
-            {formError}
-          </div>
-        )}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="is_recurring"
-                  render={({ field }) => (
-                    <FormItem className={cn(
-                      "flex flex-row items-center justify-between rounded-lg border p-4",
-                      PURPLE_GRADIENT
-                    )}>
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Recurring Appointment</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Create multiple appointments at once
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-4">
-                  <div className="p-1 rounded-lg" style={{ backgroundColor: '#f1e7ff' }}>
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setClientMode('new');
-                          form.setValue('client_name', '');
-                          form.setValue('client_email', '');
-                          setSelectedClientId('');
-                        }}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                          clientMode === 'new'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        New Client
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClientMode('existing')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                          clientMode === 'existing'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Existing Client
-                      </button>
-                    </div>
-                  </div>
-
-                  {clientMode === 'new' ? (
-                    <FormField
-                      control={form.control}
-                      name="client_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client Name</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="John Doe" 
-                              {...field} 
-                              disabled={disableClientFields}
-                              className={cn(
-                                disableClientFields && DISABLED_INPUT_BG
-                              )}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ) : (
-                    <FormItem>
-                      <FormLabel>Select Client</FormLabel>
-                      <select
-                        value={selectedClientId}
-                        onChange={(e) => handleClientSelection(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <option value="">Select an existing client</option>
-                        {existingClients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.decrypted_name || client.name}
-                          </option>
-                        ))}
-                      </select>
-                    </FormItem>
-                  )}
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="client_email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Client Email</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="email" 
-                          placeholder="client@example.com" 
-                          {...field} 
-                          disabled={disableClientFields}
-                          className={cn(
-                            disableClientFields && DISABLED_INPUT_BG
-                          )}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Add any additional notes..."
-                          className="resize-none h-[120px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-4">
-                {isRecurring && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="number_of_sessions"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Sessions</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="2"
-                              max="52"
-                              {...field}
-                              value={field.value || ''}
-                              onChange={e => {
-                                const value = e.target.value;
-                                field.onChange(value === '' ? undefined : parseInt(value));
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="session_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Start Date</FormLabel>
-                        <FormControl>
-                          <DatePicker
-                            selected={field.value}
-                            onChange={(date: Date) => field.onChange(date)}
-                            minDate={new Date()}
-                            placeholderText="Select date"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="session_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Time</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {isRecurring && (
-                  <FormField
-                    control={form.control}
-                    name="recurring_day"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Repeat Every</FormLabel>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          {...field}
-                        >
-                          <option value="monday">Every Monday</option>
-                          <option value="tuesday">Every Tuesday</option>
-                          <option value="wednesday">Every Wednesday</option>
-                          <option value="thursday">Every Thursday</option>
-                          <option value="friday">Every Friday</option>
-                          <option value="saturday">Every Saturday</option>
-                          <option value="sunday">Every Sunday</option>
-                        </select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="session_length"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Session Length</FormLabel>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        {...field}
-                      >
-                        <option value="30">30 minutes</option>
-                        <option value="45">45 minutes</option>
-                        <option value="60">60 minutes</option>
-                        <option value="75">1 hour 15 minutes</option>
-                        <option value="90">1 hour 30 minutes</option>
-                        <option value="105">1 hour 45 minutes</option>
-                        <option value="120">2 hours</option>
-                        <option value="135">2 hours 15 minutes</option>
-                        <option value="150">2 hours 30 minutes</option>
-                        <option value="165">2 hours 45 minutes</option>
-                        <option value="180">3 hours</option>
-                      </select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="session_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Session Type</FormLabel>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        {...field}
-                      >
-                        <option value="video">Video Call</option>
-                        <option value="in_person">In Person</option>
-                      </select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {form.watch('session_type') === 'in_person' && (
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <FormControl>
-                          <Input
-                            readOnly
-                            value={field.value && Object.values(field.value).some(v => v && v.trim() !== '') ? 
-                              `${field.value.address}, ${field.value.city}, ${field.value.state} - ${field.value.postal_code}, ${field.value.country}`
-                              : 'No location set - please update your location in Settings'
-                            }
-                            placeholder="No location set"
-                            className="text-muted-foreground"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {form.watch('session_type') === 'video' && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="video_provider"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Video Provider</FormLabel>
-                          <select
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            {...field}
-                            value={field.value || 'therasuite'}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              // Clear custom meeting link when switching to TheraSuite
-                              if (e.target.value === 'therasuite') {
-                                form.setValue('custom_meeting_link', null);
-                              }
-                            }}
-                            disabled={form.watch('is_recurring')} // Disable when recurring
-                          >
-                            <option value="therasuite">TheraSuite Video</option>
-                            <option value="google_meet">Google Meet</option>
-                            <option value="zoom">Zoom</option>
-                          </select>
-                          {form.watch('is_recurring') && (
-                            <p className="text-xs text-slate-600 text-muted-foreground mt-1">
-                              Recurring appointments must use TheraSuite Video
-                            </p>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {form.watch('video_provider') !== 'therasuite' && (
-                      <FormField
-                        control={form.control}
-                        name="custom_meeting_link"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Meeting Link</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="url"
-                                placeholder="https://meet.google.com/... or https://zoom.us/..."
-                                {...field}
-                                value={field.value || ''}
-                                onChange={(e) => {
-                                  field.onChange(e.target.value || null);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                  </>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2">
-                            {currency === 'USD' ? '$' : 
-                             currency === 'EUR' ? '€' : 
-                             currency === 'GBP' ? '£' : 
-                             currency === 'AUD' ? 'A$' : 
-                             currency === 'CAD' ? 'C$' : 
-                             '₹'}
-                          </span>
-                          <Input
-                            type="number"
-                            step="1"
-                            min="0"
-                            className="pl-7"
-                            placeholder="0"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                Create Appointment
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[96vh]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Create New Appointment</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4 overflow-y-auto flex-1">
+          <CreateAppointmentForm {...formProps} className="pb-4" />
+        </div>
+        <DrawerFooter className="pt-2">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            onClick={form.handleSubmit(onSubmit)}
+          >
+            Create Appointment
+          </Button>
+          <DrawerClose asChild>
+            <Button variant="outline" disabled={isSubmitting}>
+              Cancel
+            </Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 } 

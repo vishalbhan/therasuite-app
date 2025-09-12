@@ -1,8 +1,17 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import { useCurrency } from '@/contexts/CurrencyContext';
 
@@ -14,6 +23,51 @@ interface UpdatePriceModalProps {
   onUpdate: () => void;
 }
 
+// Form content component
+function PriceForm({
+  price,
+  setPrice,
+  currency,
+  handleSubmit,
+  isSubmitting,
+  className
+}: {
+  price: string;
+  setPrice: (price: string) => void;
+  currency: string;
+  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  isSubmitting: boolean;
+  className?: string;
+}) {
+  return (
+    <form onSubmit={handleSubmit} className={className}>
+      <div className="space-y-4">
+        <div>
+          <div className="relative">
+            <span className="absolute left-3 top-2">
+              {currency === 'USD' ? '$' : 
+               currency === 'EUR' ? '€' : 
+               currency === 'GBP' ? '£' : 
+               currency === 'AUD' ? 'A$' : 
+               currency === 'CAD' ? 'C$' : 
+               '₹'}
+            </span>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="pl-7"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 export function UpdatePriceModal({
   open,
   onOpenChange,
@@ -21,6 +75,7 @@ export function UpdatePriceModal({
   currentPrice,
   onUpdate
 }: UpdatePriceModalProps) {
+  const isMobile = useIsMobile();
   const [price, setPrice] = useState(currentPrice.toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currency } = useCurrency();
@@ -61,34 +116,22 @@ export function UpdatePriceModal({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader className="mb-4">
-          <DialogTitle>Update Session Price</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <div className="relative">
-              <span className="absolute left-3 top-2">
-                {currency === 'USD' ? '$' : 
-                 currency === 'EUR' ? '€' : 
-                 currency === 'GBP' ? '£' : 
-                 currency === 'AUD' ? 'A$' : 
-                 currency === 'CAD' ? 'C$' : 
-                 '₹'}
-              </span>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="pl-7"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
+  const formProps = {
+    price,
+    setPrice,
+    currency,
+    handleSubmit,
+    isSubmitting,
+  };
+
+  if (!isMobile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader className="mb-4">
+            <DialogTitle>Update Session Price</DialogTitle>
+          </DialogHeader>
+          <PriceForm {...formProps} />
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
@@ -98,12 +141,35 @@ export function UpdatePriceModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} onClick={handleSubmit}>
               {isSubmitting ? "Updating..." : "Update Price"}
             </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Update Session Price</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4 pb-4">
+          <PriceForm {...formProps} />
+        </div>
+        <DrawerFooter className="pt-2">
+          <Button type="submit" disabled={isSubmitting} onClick={handleSubmit}>
+            {isSubmitting ? "Updating..." : "Update Price"}
+          </Button>
+          <DrawerClose asChild>
+            <Button variant="outline" disabled={isSubmitting}>
+              Cancel
+            </Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 } 

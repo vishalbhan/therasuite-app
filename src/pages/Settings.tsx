@@ -40,6 +40,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Update the formSchema to handle the initial state better
 const formSchema = z.object({
@@ -73,6 +83,7 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function Settings() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
@@ -233,25 +244,27 @@ export default function Settings() {
 
   return (
     <div className="max-w-3xl mx-auto py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowPasswordModal(true)}
-            className="gap-2"
-          >
-            <Key className="h-4 w-4" />
-            Update Password
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowSignOutModal(true)}
-            className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400"
-          >
-            <Power className="h-4 w-4" />
-            Sign Out
-          </Button>
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowPasswordModal(true)}
+              className="gap-2"
+            >
+              <Key className="h-4 w-4" />
+              Update Password
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowSignOutModal(true)}
+              className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400"
+            >
+              <Power className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -613,45 +626,130 @@ export default function Settings() {
         onConfirm={handleSignOut}
       />
 
-      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Update Password</DialogTitle>
-            <DialogDescription>
-              Enter your new password below. Make sure it's at least 6 characters long.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Enter new password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+      {!isMobile ? (
+        <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Update Password</DialogTitle>
+              <DialogDescription>
+                Enter your new password below. Make sure it's at least 6 characters long.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...passwordForm}>
+              <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Confirm new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordModal(false);
+                      passwordForm.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isUpdatingPassword}
+                  >
+                    {isUpdatingPassword ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+          <DrawerContent>
+            <DrawerHeader className="text-left">
+              <DrawerTitle>Update Password</DrawerTitle>
+              <DrawerDescription>
+                Enter your new password below. Make sure it's at least 6 characters long.
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 pb-4">
+              <Form {...passwordForm}>
+                <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
+                  <FormField
+                    control={passwordForm.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Enter new password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={passwordForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Confirm new password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
+            </div>
+            <DrawerFooter className="pt-2">
+              <Button 
+                type="submit" 
+                disabled={isUpdatingPassword}
+                onClick={passwordForm.handleSubmit(handlePasswordUpdate)}
+              >
+                {isUpdatingPassword ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Password'
                 )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm New Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Confirm new password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
+              </Button>
+              <DrawerClose asChild>
                 <Button
-                  type="button"
                   variant="outline"
                   onClick={() => {
                     setShowPasswordModal(false);
@@ -660,24 +758,11 @@ export default function Settings() {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isUpdatingPassword}
-                >
-                  {isUpdatingPassword ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm mr-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Password'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      )}
     </div>
   );
 } 

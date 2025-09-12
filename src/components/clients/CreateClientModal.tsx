@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getInitials, generateRandomColor } from '@/lib/utils';
 import { Database } from '@/types/database.types';
@@ -15,7 +24,57 @@ interface CreateClientModalProps {
   onClientCreated?: () => void;
 }
 
+// Form content component to be used in both Dialog and Drawer
+function ClientForm({
+  name,
+  setName,
+  email,
+  setEmail,
+  handleSubmit,
+  loading,
+  onCancel,
+  className
+}: {
+  name: string;
+  setName: (name: string) => void;
+  email: string;
+  setEmail: (email: string) => void;
+  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  loading: boolean;
+  onCancel: () => void;
+  className?: string;
+}) {
+  return (
+    <form onSubmit={handleSubmit} className={className}>
+      <div className="grid gap-4 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter client name"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter client email"
+            required
+          />
+        </div>
+      </div>
+    </form>
+  );
+}
+
 export function CreateClientModal({ open, onOpenChange, onClientCreated }: CreateClientModalProps) {
+  const isMobile = useIsMobile();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,46 +127,55 @@ export function CreateClientModal({ open, onOpenChange, onClientCreated }: Creat
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add New Client</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter client name"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter client email"
-                required
-              />
-            </div>
-          </div>
+  const formProps = {
+    name,
+    setName,
+    email,
+    setEmail,
+    handleSubmit,
+    loading,
+    onCancel: () => onOpenChange(false),
+  };
+
+  if (!isMobile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Client</DialogTitle>
+          </DialogHeader>
+          <ClientForm {...formProps} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} onClick={handleSubmit}>
               {loading ? 'Creating...' : 'Create Client'}
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Add New Client</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4">
+          <ClientForm {...formProps} />
+        </div>
+        <DrawerFooter className="pt-2">
+          <Button type="submit" disabled={loading} onClick={handleSubmit}>
+            {loading ? 'Creating...' : 'Create Client'}
+          </Button>
+          <DrawerClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 } 
