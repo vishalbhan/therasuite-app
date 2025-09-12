@@ -1,3 +1,10 @@
+// Polyfill for Object.hasOwn to support older Safari versions
+if (!Object.hasOwn) {
+  Object.hasOwn = function(obj: object, prop: string | number | symbol): boolean {
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+  };
+}
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
