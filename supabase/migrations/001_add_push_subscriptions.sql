@@ -7,7 +7,8 @@ CREATE TABLE push_subscriptions (
   auth TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  is_active BOOLEAN DEFAULT TRUE
+  is_active BOOLEAN DEFAULT TRUE,
+  UNIQUE(user_id)
 );
 
 -- Create notification_preferences table
@@ -102,3 +103,24 @@ CREATE TRIGGER push_subscriptions_updated_at
 CREATE TRIGGER notification_preferences_updated_at
   BEFORE UPDATE ON notification_preferences
   FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+-- Function to handle push subscription upsert
+CREATE OR REPLACE FUNCTION upsert_push_subscription(
+  user_id UUID,
+  endpoint TEXT,
+  p256dh TEXT,
+  auth TEXT,
+  is_active BOOLEAN DEFAULT TRUE
+) RETURNS VOID AS $$
+BEGIN
+  INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, is_active)
+  VALUES (user_id, endpoint, p256dh, auth, is_active)
+  ON CONFLICT (user_id)
+  DO UPDATE SET
+    endpoint = EXCLUDED.endpoint,
+    p256dh = EXCLUDED.p256dh,
+    auth = EXCLUDED.auth,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

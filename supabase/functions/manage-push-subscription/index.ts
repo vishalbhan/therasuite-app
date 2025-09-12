@@ -112,14 +112,32 @@ async function handleSubscribe(supabaseClient: any, userId: string, subscription
       is_active: true
     }
 
-    // Upsert subscription (replace existing if any)
-    const { data, error } = await supabaseClient
+    // Check if subscription exists and update or insert accordingly
+    const { data: existingSubscription } = await supabaseClient
       .from('push_subscriptions')
-      .upsert(subscriptionData, { 
-        onConflict: 'user_id',
-        ignoreDuplicates: false 
-      })
-      .select()
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    let data, error;
+    if (existingSubscription) {
+      // Update existing subscription
+      const result = await supabaseClient
+        .from('push_subscriptions')
+        .update(subscriptionData)
+        .eq('user_id', userId)
+        .select();
+      data = result.data;
+      error = result.error;
+    } else {
+      // Insert new subscription
+      const result = await supabaseClient
+        .from('push_subscriptions')
+        .insert(subscriptionData)
+        .select();
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('Database error:', error)

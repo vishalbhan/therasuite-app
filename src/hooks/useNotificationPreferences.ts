@@ -18,7 +18,7 @@ export function useNotificationPreferences() {
       }
 
       const { data, error: fetchError } = await supabase
-        .from('notification_preferences')
+        .from('notification_preferences' as any)
         .select('*')
         .eq('user_id', user.data.user.id)
         .maybeSingle();
@@ -36,7 +36,7 @@ export function useNotificationPreferences() {
         };
 
         const { data: newData, error: insertError } = await supabase
-          .from('notification_preferences')
+          .from('notification_preferences' as any)
           .insert(defaultPreferences)
           .select('*')
           .single();
@@ -70,7 +70,7 @@ export function useNotificationPreferences() {
       }
 
       const { data, error: updateError } = await supabase
-        .from('notification_preferences')
+        .from('notification_preferences' as any)
         .update({
           ...updates,
           updated_at: new Date().toISOString()

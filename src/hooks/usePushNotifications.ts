@@ -78,16 +78,26 @@ export function usePushNotifications() {
       is_active: true
     };
 
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(subscriptionData, { 
-        onConflict: 'user_id',
-        ignoreDuplicates: false 
-      });
+    // Use RPC call or direct SQL to handle upsert
+    const { error } = await supabase.rpc('upsert_push_subscription', subscriptionData);
 
     if (error) {
       console.error('Failed to save push subscription:', error);
-      throw new Error('Failed to save push subscription');
+      // Fallback: try insert first, then update if it fails
+      const { error: insertError } = await supabase
+        .from('push_subscriptions' as any)
+        .insert(subscriptionData);
+      
+      if (insertError) {
+        const { error: updateError } = await supabase
+          .from('push_subscriptions' as any)
+          .update(subscriptionData)
+          .eq('user_id', user.data.user.id);
+        
+        if (updateError) {
+          throw new Error('Failed to save push subscription');
+        }
+      }
     }
   }, []);
 
@@ -96,7 +106,7 @@ export function usePushNotifications() {
     if (!user.data.user) return;
 
     const { error } = await supabase
-      .from('push_subscriptions')
+      .from('push_subscriptions' as any)
       .update({ is_active: false })
       .eq('user_id', user.data.user.id);
 
