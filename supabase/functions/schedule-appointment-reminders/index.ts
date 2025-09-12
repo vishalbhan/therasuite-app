@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 console.log("Schedule appointment reminders function loaded")
@@ -13,6 +14,12 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
     )
 
     // This function is typically called by a cron job
@@ -159,42 +166,3 @@ async function scheduleReminders(supabaseClient: any) {
   return results
 }
 
-// Helper function to create Supabase client
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      select: (columns: string) => ({
-        eq: (column: string, value: any) => ({
-          gte: (column: string, value: any) => ({
-            lte: (column: string, value: any) => 
-              fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=gte.${value}&${column}=lte.${value}`, {
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json'
-                }
-              }).then(res => res.json()).then(data => ({ data, error: null }))
-          }),
-          maybeSingle: () => 
-            fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}`, {
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json'
-              }
-            }).then(res => res.json()).then(data => ({ data: data?.[0] || null, error: null }))
-        }),
-        insert: (data: any) => 
-          fetch(`${supabaseUrl}/rest/v1/${table}`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-          }).then(res => ({ data: null, error: res.ok ? null : { message: 'Insert failed' } }))
-      })
-    })
-  }
-}

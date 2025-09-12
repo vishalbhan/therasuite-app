@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 console.log("Send push notification function loaded")
@@ -29,7 +30,7 @@ serve(async (req) => {
   }
 
   try {
-    const { supabaseClient, user } = await createClient(req)
+    const { supabaseClient, user } = await createAuthenticatedClient(req)
 
     if (!user) {
       return new Response(
@@ -100,7 +101,7 @@ serve(async (req) => {
   }
 })
 
-async function createClient(req: Request) {
+async function createAuthenticatedClient(req: Request) {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
     throw new Error('No authorization header')
