@@ -195,19 +195,31 @@ async function sendPushNotifications(
 }
 
 async function sendToSubscription(subscription: any, notification: NotificationPayload) {
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  const vapidSubject = Deno.env.get('VAPID_SUBJECT')
-
-  if (!vapidPrivateKey || !vapidSubject) {
-    console.error('VAPID keys not configured')
-    return {
-      success: false,
-      error: 'VAPID keys not configured',
-      shouldDeactivate: false
-    }
-  }
+  console.log('Attempting to send notification to subscription:', {
+    endpoint: subscription.endpoint,
+    hasKeys: !!(subscription.p256dh && subscription.auth)
+  })
 
   try {
+    // Use Node.js web-push via NPM CDN with Deno compatibility
+    const webPush = await import('npm:web-push@3.6.7')
+    
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT')
+    const vapidPublicKey = Deno.env.get('VITE_VAPID_PUBLIC_KEY')
+
+    if (!vapidPrivateKey || !vapidSubject || !vapidPublicKey) {
+      console.error('VAPID keys not configured')
+      return {
+        success: false,
+        error: 'VAPID keys not configured',
+        shouldDeactivate: false
+      }
+    }
+
+    // Set VAPID details
+    webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+
     // Prepare the notification payload
     const payload = JSON.stringify({
       title: notification.title,
@@ -219,15 +231,7 @@ async function sendToSubscription(subscription: any, notification: NotificationP
       actions: notification.actions || []
     })
 
-    // Import web-push using dynamic import for Deno
-    const webpush = await import('https://cdn.skypack.dev/web-push@3.6.7')
-
-    // Set VAPID details
-    webpush.setVapidDetails(
-      vapidSubject,
-      Deno.env.get('VITE_VAPID_PUBLIC_KEY') ?? '',
-      vapidPrivateKey
-    )
+    console.log('Sending notification with payload:', payload)
 
     // Reconstruct the subscription object
     const pushSubscription = {
@@ -239,7 +243,9 @@ async function sendToSubscription(subscription: any, notification: NotificationP
     }
 
     // Send the notification
-    await webpush.sendNotification(pushSubscription, payload)
+    const response = await webPush.sendNotification(pushSubscription, payload)
+    
+    console.log('Push notification sent successfully:', response)
 
     return {
       success: true,
