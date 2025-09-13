@@ -103,6 +103,8 @@ serve(async (req) => {
 
 async function createAuthenticatedClient(req: Request) {
   const authHeader = req.headers.get('Authorization')
+  console.log('Auth header received:', authHeader ? 'Present' : 'Missing')
+  
   if (!authHeader) {
     throw new Error('No authorization header')
   }
@@ -119,12 +121,32 @@ async function createAuthenticatedClient(req: Request) {
   )
 
   const token = authHeader.replace('Bearer ', '')
+  const expectedServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  
+  console.log('Token length:', token.length)
+  console.log('Expected service key length:', expectedServiceKey?.length || 'undefined')
+  console.log('Tokens match:', token === expectedServiceKey)
+  
+  // Check if this is a service role key
+  if (token === expectedServiceKey) {
+    console.log('Using service role authentication')
+    // Service role authentication - return a mock user for system operations
+    return { 
+      supabaseClient, 
+      user: { id: 'service-role', role: 'service_role' } 
+    }
+  }
+
+  console.log('Attempting user token authentication')
+  // Regular user token authentication
   const { data: { user }, error } = await supabaseClient.auth.getUser(token)
 
   if (error || !user) {
+    console.log('User token authentication failed:', error?.message)
     throw new Error('Invalid token')
   }
 
+  console.log('User token authentication successful')
   return { supabaseClient, user }
 }
 

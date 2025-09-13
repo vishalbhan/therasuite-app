@@ -140,7 +140,7 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Calculate today's sessions
+      // Calculate today's sessions (excluding cancelled appointments)
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
       const { data: todayData } = await supabase
@@ -148,14 +148,15 @@ export default function Dashboard() {
         .select('*')
         .eq('therapist_id', user.id)
         .gte('session_date', todayStart.toISOString())
-        .lte('session_date', todayEnd.toISOString());
+        .lte('session_date', todayEnd.toISOString())
+        .neq('status', 'cancelled');
 
       const totalToday = todayData?.length || 0;
       const remainingToday = todayData?.filter(apt => 
         new Date(apt.session_date) > new Date()
       ).length || 0;
 
-      // Calculate this week's hours
+      // Calculate this week's hours (excluding cancelled appointments)
       const weekStart = startOfWeek(new Date());
       const weekEnd = endOfWeek(new Date());
       const { data: weekData } = await supabase
@@ -163,7 +164,8 @@ export default function Dashboard() {
         .select('session_length')
         .eq('therapist_id', user.id)
         .gte('session_date', weekStart.toISOString())
-        .lte('session_date', weekEnd.toISOString());
+        .lte('session_date', weekEnd.toISOString())
+        .neq('status', 'cancelled');
 
       const thisWeekHours = Math.round(
         (weekData?.reduce((acc, apt) => acc + (apt.session_length || 0), 0) || 0) / 60

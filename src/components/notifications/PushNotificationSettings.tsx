@@ -224,7 +224,7 @@ export function PushNotificationSettings() {
           )}
 
           {/* Test Notification */}
-          {isSubscribed && (
+          {/* {isSubscribed && (
             <>
               <Separator />
               
@@ -263,7 +263,7 @@ export function PushNotificationSettings() {
                 )}
               </div>
             </>
-          )}
+          )} */}
 
           {/* Error Display */}
           {(error || preferencesError) && (

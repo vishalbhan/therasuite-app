@@ -109,22 +109,29 @@ serve(async (req) => {
 
     // Verify the JWT token
     const jwt = authHeader.replace('Bearer ', '')
+    const expectedServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
-    // Check if it's a service role key by decoding the JWT payload
+    // Check if it's the service role key directly or by JWT decoding
     let isServiceRoleKey = false;
-    try {
-      const parts = jwt.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        isServiceRoleKey = payload.role === 'service_role';
+    
+    // First check if it matches the service role key directly
+    if (jwt === expectedServiceKey) {
+      isServiceRoleKey = true;
+    } else {
+      // Try to decode as JWT to check role
+      try {
+        const parts = jwt.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          isServiceRoleKey = payload.role === 'service_role';
+        }
+      } catch (e) {
+        // If we can't decode it, treat it as a regular user token
       }
-    } catch (e) {
-      // If we can't decode it, treat it as a regular user token
     }
     
     if (isServiceRoleKey) {
       // For service role key, skip user validation as it's an admin operation
-      console.log('Using service role authentication')
     } else {
       // For user JWT tokens, validate normally
       const { data: user, error: authError } = await supabaseClient.auth.getUser(jwt)
