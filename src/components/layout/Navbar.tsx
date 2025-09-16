@@ -50,38 +50,45 @@ export function Navbar() {
   const navigate = useNavigate();
 
   return (
-    <nav className="border-b">
+    <nav className="border-b bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Link to="/dashboard" className="text-xl font-bold text-violet-800">
-                TheraSuite
+              <Link to="/dashboard" className="flex items-center space-x-2">
+                <img 
+                  src="/android-chrome-192x192.png" 
+                  alt="TheraSuite Logo" 
+                  className="h-8 w-8 rounded-lg"
+                />
+                <span className="text-xl font-bold text-purple-600">
+                  TheraSuite
+                </span>
               </Link>
             </div>
+          </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex md:space-x-4 md:ml-8">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                      ${isActive 
-                        ? 'bg-violet-100 text-violet-900' 
-                        : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
-                      }`}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
+          {/* Centered Desktop Navigation */}
+          <div className="hidden md:flex md:space-x-4 absolute left-1/2 transform -translate-x-1/2">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              const Icon = item.icon;
+              
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                    ${isActive 
+                      ? 'bg-purple-600 text-white' 
+                      : 'text-gray-600 hover:bg-purple-100 hover:text-violet-900'
+                    }`}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">

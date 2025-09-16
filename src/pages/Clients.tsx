@@ -143,129 +143,51 @@ export default function Clients() {
         </Button>
       </div>
       
-      {/* Desktop Table View */}
-      <div className="hidden md:block rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Client</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Email</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500">Last Appointment</th>
-              <th className="py-4 px-4 text-right font-medium text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {clients.map((client) => (
-              <tr 
-                key={client.id}
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => navigate(`/clients/${client.id}`)}
-              >
-                <td className="py-4 px-4">
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-black font-semibold text-sm"
-                      style={{ backgroundColor: client.avatar_color }}
-                    >
-                      {client.initials}
-                    </div>
-                    <span className="font-medium">{client.decrypted_name || client.name}</span>
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-gray-500">
-                  {client.decrypted_email || client.email}
-                </td>
-                <td className="py-4 px-4 text-gray-500">
-                  {client.last_appointment_date 
-                    ? format(new Date(client.last_appointment_date), 'MMM d, yyyy')
-                    : 'No appointments yet'}
-                </td>
-                <td className="py-4 px-4 text-right space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCreateAppointment(client);
-                    }}
-                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                  >
-                    <Calendar className="h-4 w-4 mr-0.5" />
-                    New Appointment
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/clients/${client.id}`);
-                    }}
-                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                  >
-                    <History className="h-4 w-4 mr-0.5" />
-                    View History
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
+      {/* Desktop and Mobile Card Grid View */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {clients.map((client) => (
           <div 
             key={client.id}
-            className="bg-white rounded-lg border shadow-sm p-4 space-y-4"
+            className="bg-white rounded-2xl border shadow-lg p-6 space-y-4 hover:shadow-xl transition-all duration-200 cursor-pointer"
             onClick={() => navigate(`/clients/${client.id}`)}
           >
             <div className="flex items-center space-x-3">
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-black font-semibold text-sm"
+                className="w-12 h-12 rounded-full flex items-center justify-center text-black font-semibold"
                 style={{ backgroundColor: client.avatar_color }}
               >
                 {client.initials}
               </div>
-              <div>
-                <div className="font-medium">{client.decrypted_name || client.name}</div>
-                <div className="text-sm text-gray-500">{client.decrypted_email || client.email}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-lg truncate">{client.decrypted_name || client.name}</div>
+                <div className="text-sm text-gray-500 truncate">{client.decrypted_email || client.email}</div>
               </div>
-            </div>
-
-            <div className="flex items-center text-sm text-gray-500">
-              <History className="h-4 w-4 mr-2" />
-              {client.last_appointment_date 
-                ? format(new Date(client.last_appointment_date), 'MMM d, yyyy')
-                : 'No appointments yet'}
-            </div>
-
-            <div className="flex space-x-2 pt-2 border-t">
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCreateAppointment(client);
                 }}
-                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                className="h-8 w-8 p-0 rounded-full bg-purple-600 hover:bg-purple-700"
               >
-                <Calendar className="h-4 w-4 mr-1.5" />
-                New Appointment
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/clients/${client.id}`);
-                }}
-                className="flex-1 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-              >
-                <History className="h-4 w-4 mr-1.5" />
-                View History
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
+
+            <div className="space-y-2 mt-4">
+              <div className="flex items-center text-xs text-gray-500">
+                <History className="h-3 w-3 mr-2 flex-shrink-0" />
+                <span className="font-medium">Last Appointment:</span>
+                <span className="ml-2">
+                  {client.last_appointment_date 
+                    ? format(new Date(client.last_appointment_date), 'MMM d, yyyy')
+                    : 'No appointments yet'}
+                </span>
+              </div>
+            </div>
+
+
           </div>
         ))}
       </div>

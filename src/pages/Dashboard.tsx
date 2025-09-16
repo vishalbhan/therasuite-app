@@ -278,7 +278,7 @@ export default function Dashboard() {
             selected={selectedDate}
             onSelect={handleDateSelect}
             onMonthChange={handleCalendarMonthChange}
-            className="rounded-md border"
+            className="rounded-xl shadow-md hover:shadow-lg border bg-white"
             modifiers={{
               today: (date) => isToday(date),
               hasAppointments: (date) => hasAppointmentsOnDate(date)

@@ -116,3 +116,9 @@
     transform: translateX(100%);
   }
 }
+
+table {
+  background: white;
+  border-radius: 0.5rem;
+}
+

@@ -44,9 +44,9 @@ const formSchema = z.object({
     required_error: "Please select a session time",
     invalid_type_error: "Invalid time format",
   }).regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"),
-  session_length: z.enum(["30", "60", "90", "120"], {
+  session_length: z.enum(["30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180"], {
     required_error: "Please select a session length",
-    invalid_type_error: "Please select a valid session length (30, 60, 90, or 120 minutes)",
+    invalid_type_error: "Please select a valid session length",
   }),
   notes: z.string({
     invalid_type_error: "Notes must be text",
@@ -160,9 +160,16 @@ function EditAppointmentForm({
                   {...field}
                 >
                   <option value="30">30 minutes</option>
+                  <option value="45">45 minutes</option>
                   <option value="60">60 minutes</option>
-                  <option value="90">90 minutes</option>
-                  <option value="120">120 minutes</option>
+                  <option value="75">1 hour 15 minutes</option>
+                  <option value="90">1 hour 30 minutes</option>
+                  <option value="105">1 hour 45 minutes</option>
+                  <option value="120">2 hours</option>
+                  <option value="135">2 hours 15 minutes</option>
+                  <option value="150">2 hours 30 minutes</option>
+                  <option value="165">2 hours 45 minutes</option>
+                  <option value="180">3 hours</option>
                 </select>
                 <FormMessage />
               </FormItem>
@@ -214,7 +221,7 @@ export function EditAppointmentModal({
           // Update form with the stored values
           form.setValue('session_date', new Date(values.session_date));
           form.setValue('session_time', values.session_time);
-          form.setValue('session_length', String(values.session_length) as "30" | "60" | "90" | "120");
+          form.setValue('session_length', String(values.session_length) as "30" | "45" | "60" | "75" | "90" | "105" | "120" | "135" | "150" | "165" | "180");
           
           // Clear the stored values
           sessionStorage.removeItem('editAppointmentValues');
@@ -230,7 +237,7 @@ export function EditAppointmentModal({
     defaultValues: {
       session_date: appointment ? new Date(appointment.session_date) : undefined,
       session_time: appointment ? format(new Date(appointment.session_date), "HH:mm") : "",
-      session_length: appointment ? String(appointment.session_length) as "30" | "60" | "90" | "120" : "60",
+      session_length: appointment ? String(appointment.session_length) as "30" | "45" | "60" | "75" | "90" | "105" | "120" | "135" | "150" | "165" | "180" : "60",
       notes: appointment?.notes || "",
     },
   });

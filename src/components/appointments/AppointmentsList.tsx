@@ -19,6 +19,7 @@ import { emailService } from '@/lib/email';
 import { NotesModal } from "./NotesModal";
 import { UpdatePriceModal } from './UpdatePriceModal';
 import { useDecryptedAppointments } from '@/hooks/useDecryptedAppointments';
+import { Card } from "../ui/card";
 
 interface Appointment {
   id: string;
@@ -629,9 +630,9 @@ export function AppointmentsList({
                       </p>
                     ) : (
                       dayAppointments.map(appointment => (
-                        <div
+                        <Card
                           key={appointment.id}
-                          className="border rounded-lg p-4 hover:shadow transition-shadow"
+                          className="bg-white rounded-2xl border shadow-lg p-6 hover:shadow-xl transition-all duration-200"
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -817,7 +818,7 @@ export function AppointmentsList({
                               </div>
                             </div>
                           )}
-                        </div>
+                        </Card>
                       ))
                     )}
                   </div>
@@ -826,9 +827,9 @@ export function AppointmentsList({
             </div>
           ) : (
             decryptedAppointments.map((appointment) => (
-            <div
+            <Card
               key={appointment.id}
-              className="border rounded-lg p-4 hover:shadow transition-shadow"
+              className="bg-white rounded-2xl border shadow-lg p-6 hover:shadow-xl transition-all duration-200"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -1014,7 +1015,7 @@ export function AppointmentsList({
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
             ))
           )}
         </div>

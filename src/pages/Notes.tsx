@@ -145,99 +145,43 @@ export default function Notes() {
     <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Session Notes</h1>
-        <select
-          value={selectedClient}
-          onChange={(e) => setSelectedClient(e.target.value)}
-          className="w-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <option value="">All Clients</option>
-          {Array.from(new Set(decryptedNotes.map(note => note.decrypted_client_name))).map(client => (
-            <option key={client} value={client}>
-              {client}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={selectedClient}
+            onChange={(e) => setSelectedClient(e.target.value)}
+            className="w-[280px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm ring-offset-background transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-gray-300 appearance-none cursor-pointer"
+          >
+            <option value="">All Clients</option>
+            {Array.from(new Set(decryptedNotes.map(note => note.decrypted_client_name))).map(client => (
+              <option key={client} value={client}>
+                {client}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        </div>
       </div>
       
-      {/* Desktop Table View */}
-      <div className="hidden md:block rounded-md border">
-        <table className="w-full text-sm table-fixed">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="py-4 px-4 text-left font-medium text-gray-500 w-1/4">Client</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500 w-1/6">Date</th>
-              <th className="py-4 px-4 text-left font-medium text-gray-500 w-2/5">Notes</th>
-              <th className="py-4 px-4 text-right font-medium text-gray-500 w-1/4"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {filteredNotes.map((note) => (
-              <tr 
-                key={note.id} 
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => setViewingNotes({
-                  appointmentId: note.id,
-                  notes: note.decrypted_notes,
-                  price: note.price
-                })}
-              >
-                <td className="py-4 px-4 w-1/4">
-                  <div className="font-medium truncate">{note.decrypted_client_name}</div>
-                  <div className="text-sm text-gray-500 truncate">{note.decrypted_client_email}</div>
-                </td>
-                <td className="py-4 px-4 text-gray-500 w-1/6">
-                  {format(new Date(note.session_date), 'MMM d, yyyy')}
-                </td>
-                <td className="py-4 px-4 w-2/5">
-                  <div className="text-sm text-gray-600 break-words">
-                    {truncateText(note.decrypted_notes, 80)}
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-right w-1/4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/clients/${note.client_id}`);
-                    }}
-                    className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                  >
-                    <History className="h-4 w-4 mr-0.5" />
-                    Client History
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
+      {/* Card Grid View */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredNotes.map((note) => (
           <div 
             key={note.id}
-            className="bg-white rounded-lg border shadow-sm p-4 space-y-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            className="bg-white rounded-2xl border shadow-lg p-6 space-y-4 hover:shadow-xl transition-all duration-200 cursor-pointer"
             onClick={() => setViewingNotes({
               appointmentId: note.id,
               notes: note.decrypted_notes,
               price: note.price
             })}
           >
-            <div>
-              <div className="font-medium">{note.decrypted_client_name}</div>
-              <div className="text-sm text-gray-500">{note.decrypted_client_email}</div>
-              <div className="text-sm text-gray-500">
-                {format(new Date(note.session_date), 'MMM d, yyyy')}
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <FileText className="h-6 w-6 text-purple-600" />
               </div>
-            </div>
-
-            <div className="text-sm text-gray-600 line-clamp-3">
-              {truncateText(note.decrypted_notes, 100)}
-            </div>
-
-            <div className="flex justify-end pt-2 border-t">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-lg truncate">{note.decrypted_client_name}</div>
+                <div className="text-sm text-gray-500 truncate">{note.decrypted_client_email}</div>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -245,11 +189,27 @@ export default function Notes() {
                   e.stopPropagation();
                   navigate(`/clients/${note.client_id}`);
                 }}
-                className="text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                className="h-8 w-8 p-0 rounded-full text-gray-500 hover:text-purple-600 hover:bg-purple-50"
               >
-                <History className="h-4 w-4 mr-1.5" />
-                Client History
+                <History className="h-4 w-4" />
               </Button>
+            </div>
+
+            <div className="space-y-2 mt-4">
+              <div className="flex items-center text-xs text-gray-500">
+                <History className="h-3 w-3 mr-2 flex-shrink-0" />
+                <span className="font-medium">Session Date:</span>
+                <span className="ml-2">
+                  {format(new Date(note.session_date), 'MMM d, yyyy')}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="text-sm text-gray-600 font-medium mb-2">Session Notes:</div>
+              <div className="text-sm text-gray-600 line-clamp-3">
+                {truncateText(note.decrypted_notes, 120)}
+              </div>
             </div>
           </div>
         ))}
