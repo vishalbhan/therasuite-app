@@ -57,7 +57,7 @@ type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 function AppointmentSkeleton() {
   return (
-    <div className="border rounded-lg p-4 hover:shadow transition-shadow overflow-hidden">
+    <div className="rounded-xl bg-white p-4 shadow-md overflow-hidden">
       <div className="flex justify-between items-start">
         <div className="space-y-3 flex-1">
           {/* Time skeleton */}
