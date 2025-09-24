@@ -115,11 +115,11 @@ const formSchema = z.object({
     .transform((val) => parseFloat(val)),
   notes: z.string().optional(),
   is_recurring: z.boolean().default(false),
-  recurring_day: z.enum(
-    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  recurring_frequency: z.enum(
+    ['weekly', 'biweekly', 'monthly', 'bimonthly'],
     { 
-      required_error: "Please select a day for recurring appointments",
-      invalid_type_error: "Please select a valid day of the week",
+      required_error: "Please select a frequency for recurring appointments",
+      invalid_type_error: "Please select a valid frequency",
     }
   ).optional(),
   number_of_sessions: z.number({
@@ -576,21 +576,19 @@ function CreateAppointmentForm({
               {isRecurring && (
                 <FormField
                   control={form.control}
-                  name="recurring_day"
+                  name="recurring_frequency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Repeat Every</FormLabel>
+                      <FormLabel>Frequency</FormLabel>
                       <select
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         {...field}
                       >
-                        <option value="monday">Every Monday</option>
-                        <option value="tuesday">Every Tuesday</option>
-                        <option value="wednesday">Every Wednesday</option>
-                        <option value="thursday">Every Thursday</option>
-                        <option value="friday">Every Friday</option>
-                        <option value="saturday">Every Saturday</option>
-                        <option value="sunday">Every Sunday</option>
+                        <option value="">Select frequency</option>
+                          <option value="weekly">Weekly (every 7 days)</option>
+                          <option value="biweekly">Bi-Weekly (every 14 days)</option>
+                          <option value="monthly">Monthly (every month)</option>
+                          <option value="bimonthly">Bi-Monthly (every 2 months)</option>
                       </select>
                       <FormMessage />
                     </FormItem>
@@ -809,7 +807,7 @@ export function CreateAppointmentModal({
       price: 0,
       notes: "",
       is_recurring: false,
-      recurring_day: undefined,
+      recurring_frequency: undefined,
       number_of_sessions: undefined,
     },
   });
@@ -1259,10 +1257,26 @@ export function CreateAppointmentModal({
         successCount++;
         setCreatedCount(successCount);
 
-        // If recurring, calculate next date
+        // If recurring, calculate next date based on frequency
         if (values.is_recurring) {
-          // Add 7 days to get to next week
-          currentSessionDate = new Date(currentSessionDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const frequency = values.recurring_frequency;
+          if (frequency === 'weekly') {
+            // Add 7 days for weekly
+            currentSessionDate = new Date(currentSessionDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          } else if (frequency === 'biweekly') {
+            // Add 14 days for biweekly
+            currentSessionDate = new Date(currentSessionDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+          } else if (frequency === 'monthly') {
+            // Add 1 month for monthly
+            const nextMonth = new Date(currentSessionDate);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            currentSessionDate = nextMonth;
+          } else if (frequency === 'bimonthly') {
+            // Add 2 months for bi-monthly
+            const nextBiMonth = new Date(currentSessionDate);
+            nextBiMonth.setMonth(nextBiMonth.getMonth() + 2);
+            currentSessionDate = nextBiMonth;
+          }
         }
       }
 
@@ -1299,19 +1313,13 @@ export function CreateAppointmentModal({
     }
   };
 
-  // Update the useEffect that watches is_recurring to also handle video provider
+  // Update the useEffect that watches is_recurring to handle video provider
   useEffect(() => {
     if (form.watch('is_recurring')) {
-      const selectedDate = form.watch('session_date');
-      if (selectedDate) {
-        const dayOfWeek = selectedDate.getDay();
-        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        form.setValue('recurring_day', days[dayOfWeek] as any);
-      }
       // Force video provider to TheraSuite when recurring is enabled
       form.setValue('video_provider', 'therasuite');
     }
-  }, [form.watch('session_date'), form.watch('is_recurring')]);
+  }, [form.watch('is_recurring')]);
 
   const formProps = {
     form,

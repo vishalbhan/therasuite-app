@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CreateAppointmentModal } from '@/components/appointments/CreateAppointmentModal';
 import { useSearchParams } from 'react-router-dom';
 import { Client, Appointment } from '@/types/supabase';
-import { ChevronLeft, Eye, Save, Plus, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronLeft, Eye, Save, Plus, ChevronRight, Trash2, Edit } from 'lucide-react';
 import { NotesModal } from '@/components/appointments/NotesModal';
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +17,9 @@ import { Label } from '@/components/ui/label';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { decryptSingleValue, encryptClientData } from '@/lib/encryption';
 import { AIClientNotesSummary } from '@/components/clients/AIClientNotesSummary';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Update the Database type definition to include the new fields
 type Database = {
@@ -78,6 +81,7 @@ const categorizeAppointments = (appointments: Appointment[]) => {
 export default function ClientDetails() {
   const navigate = useNavigate();
   const { clientId } = useParams();
+  const isMobile = useIsMobile();
   const [client, setClient] = useState<Client | null>(null);
   const [decryptedName, setDecryptedName] = useState<string>('');
   const [decryptedEmail, setDecryptedEmail] = useState<string>('');
@@ -97,6 +101,11 @@ export default function ClientDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: ''
+  });
 
   useEffect(() => {
     const fetchClientDetails = async () => {
@@ -112,12 +121,12 @@ export default function ClientDetails() {
           .eq('therapist_id', user.id)
           .single();
 
-        if (clientError) throw clientError;
+        if (clientError || !clientData) throw clientError;
         setClient(clientData as Client);
 
         // Decrypt client data
-        const decryptedClientName = await decryptSingleValue(clientData.name);
-        const decryptedClientEmail = await decryptSingleValue(clientData.email);
+        const decryptedClientName = await decryptSingleValue((clientData as any).name);
+        const decryptedClientEmail = await decryptSingleValue((clientData as any).email);
         setDecryptedName(decryptedClientName);
         setDecryptedEmail(decryptedClientEmail);
 
@@ -181,7 +190,7 @@ export default function ClientDetails() {
         email: email
       });
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('clients')
         .update({
           name: encryptedData.name,
@@ -236,6 +245,61 @@ export default function ClientDetails() {
     }
   };
 
+  const handleOpenEditModal = () => {
+    setEditFormData({
+      name: decryptedName,
+      email: decryptedEmail
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditedClient = async () => {
+    if (!editFormData.name.trim()) {
+      toast.error('Client name cannot be empty.');
+      return;
+    }
+    if (!editFormData.email || !/\S+@\S+\.\S+/.test(editFormData.email)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      // Encrypt the name and email before saving
+      const encryptedData = await encryptClientData({
+        name: editFormData.name.trim(),
+        email: editFormData.email
+      });
+
+      const { error } = await (supabase as any)
+        .from('clients')
+        .update({
+          name: encryptedData.name,
+          email: encryptedData.email
+        })
+        .eq('id', clientId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      if (client) {
+        setClient({
+          ...client,
+          name: encryptedData.name,
+          email: encryptedData.email
+        });
+        // Update decrypted values too
+        setDecryptedName(editFormData.name.trim());
+        setDecryptedEmail(editFormData.email);
+      }
+      
+      setShowEditModal(false);
+      toast.success('Client details updated successfully');
+    } catch (error) {
+      toast.error('Failed to update client details');
+      console.error(error);
+    }
+  };
+
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1));
   };
@@ -281,6 +345,25 @@ export default function ClientDetails() {
           <p className="text-gray-500">{isEditing ? email : decryptedEmail}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Edit Button - Desktop */}
+          <Button
+            variant="outline"
+            className="hidden sm:flex"
+            onClick={handleOpenEditModal}
+          >
+            <Edit className="h-4 w-4 mr-1.5" />
+            Edit
+          </Button>
+          {/* Edit Button - Mobile */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="sm:hidden"
+            onClick={handleOpenEditModal}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+
           {/* Delete Button - Desktop */}
           <Button
             variant="outline"
@@ -288,7 +371,7 @@ export default function ClientDetails() {
             onClick={() => setShowDeleteConfirmModal(true)}
           >
             <Trash2 className="h-4 w-4 mr-1.5" />
-            Delete Client
+            Delete
           </Button>
           {/* Delete Button - Mobile */}
           <Button
@@ -326,87 +409,6 @@ export default function ClientDetails() {
           </Button>
         </div>
       </div>
-
-      {/* <Card className="mb-6 bg-white shadow-lg rounded-xl">
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Client Information</h2>
-            <Button 
-              variant={isEditing ? "outline" : "outline"} 
-              onClick={() => {
-                if (isEditing) {
-                  saveClientDetails();
-                } else {
-                  setIsEditing(true);
-                }
-              }}
-              className={`flex items-center gap-2 ${
-                isEditing ? 'border-primary text-primary hover:bg-primary/10' : ''
-              }`}
-            >
-              {isEditing ? (
-                <>
-                  <Save className="h-4 w-4" />
-                  Save
-                </>
-              ) : (
-                "Edit Details"
-              )}
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                disabled={!isEditing}
-                placeholder="Enter client name"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={!isEditing}
-                placeholder="Enter email address"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                disabled={!isEditing}
-                placeholder="Enter phone number"
-                className="mt-1"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <Label htmlFor="diagnosis">Diagnosis</Label>
-              <Textarea
-                id="diagnosis"
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
-                disabled={!isEditing}
-                placeholder="Enter diagnosis information for this client"
-                className="mt-1 min-h-[120px]"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card> */}
 
       <AIClientNotesSummary clientId={clientId || ''} />
 
@@ -451,7 +453,7 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || '',
+                        notes: (appointment as any).decryptedNotes || '',
                         price: appointment.price
                       })}
                     />
@@ -471,7 +473,7 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || '',
+                        notes: (appointment as any).decryptedNotes || '',
                         price: appointment.price
                       })}
                     />
@@ -491,7 +493,7 @@ export default function ClientDetails() {
                       appointment={appointment}
                       onClick={() => setViewingNotes({
                         appointmentId: appointment.id,
-                        notes: appointment.decryptedNotes || '',
+                        notes: (appointment as any).decryptedNotes || '',
                         price: appointment.price
                       })}
                     />
@@ -502,6 +504,85 @@ export default function ClientDetails() {
           </div>
         )}
       </div>
+
+      {/* Edit Client Modal */}
+      {!isMobile ? (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Client Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Client name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Client email"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditedClient}>
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={showEditModal} onOpenChange={setShowEditModal}>
+          <DrawerContent>
+            <DrawerHeader className="text-left">
+              <DrawerTitle>Edit Client Details</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 space-y-4 pb-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name-mobile">Name</Label>
+                <Input
+                  id="edit-name-mobile"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Client name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email-mobile">Email</Label>
+                <Input
+                  id="edit-email-mobile"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Client email"
+                />
+              </div>
+            </div>
+            <DrawerFooter className="pt-2">
+              <Button onClick={handleSaveEditedClient}>
+                Save Changes
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">
+                  Cancel
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      )}
 
       <CreateAppointmentModal
         open={searchParams.get("modal") === "create"}
@@ -537,7 +618,6 @@ export default function ClientDetails() {
         confirmText="Yes, delete client"
         cancelText="Cancel"
         onConfirm={handleDeleteClient}
-        variant="destructive"
       />
     </div>
   );
@@ -563,11 +643,11 @@ const AppointmentCard = ({
         <div className="text-sm text-gray-500">
           {appointment.session_length} minutes · {appointment.session_type === 'video' ? 'Video Call' : 'In-Person'}
         </div>
-        {appointment.decryptedNotes && (
+        {(appointment as any).decryptedNotes && (
           <div className="mt-2 flex items-center gap-2">
             <Eye className="h-4 w-4 text-blue-500" />
             <div className="text-sm text-gray-600 line-clamp-2 bg-blue-50 px-3 py-1.5 rounded-md">
-              {appointment.decryptedNotes}
+              {(appointment as any).decryptedNotes}
             </div>
           </div>
         )}
