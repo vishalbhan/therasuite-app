@@ -23,7 +23,7 @@ import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import Notes from "@/pages/Notes";
-import { NotificationPermissionPrompt } from '@/components/notifications/NotificationPermissionPrompt';
+
 LogRocket.init('vb-mindful-pvt-ltd/therasuite');
 
 const App = () => {
@@ -37,10 +37,6 @@ const App = () => {
           {/* App-wide toast providers */}
           <AppToaster />
           <SonnerToaster />
-          <NotificationPermissionPrompt 
-            onGranted={() => console.log('Notifications granted!')}
-            onDismiss={() => console.log('User dismissed prompt')}
-          />
           <Router>
             <Routes>
               <Route path="/" element={<AuthLayout />} />

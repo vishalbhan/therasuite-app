@@ -56,11 +56,11 @@ export function Navbar() {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link to="/dashboard" className="flex items-center space-x-2">
-                <img 
+                {/* <img 
                   src="/android-chrome-192x192.png" 
                   alt="TheraSuite Logo" 
                   className="h-8 w-8 rounded-lg"
-                />
+                /> */}
                 <span className="text-xl font-bold text-purple-600">
                   TheraSuite
                 </span>
