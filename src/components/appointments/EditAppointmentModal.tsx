@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
@@ -79,12 +80,14 @@ function EditAppointmentForm({
   onSubmit,
   formError,
   formErrors,
+  isSubmitting,
   className
 }: {
   form: any;
   onSubmit: (values: FormValues) => Promise<void>;
   formError: string | null;
   formErrors: FormErrors;
+  isSubmitting: boolean;
   className?: string;
 }) {
   return (
@@ -200,6 +203,7 @@ export function EditAppointmentModal({
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Check for stored values from drag and drop
   useEffect(() => {
@@ -236,6 +240,7 @@ export function EditAppointmentModal({
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     setFormErrors({});
+    setIsSubmitting(true);
     
     try {
       if (!appointment) {
@@ -400,6 +405,8 @@ export function EditAppointmentModal({
     } catch (error: any) {
       console.error('Update error:', error);
       setFormError(error.message || "Failed to update appointment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -408,6 +415,7 @@ export function EditAppointmentModal({
     onSubmit,
     formError,
     formErrors,
+    isSubmitting,
   };
 
   if (!isMobile) {
@@ -422,8 +430,10 @@ export function EditAppointmentModal({
             <Button
               type="submit"
               onClick={form.handleSubmit(onSubmit)}
+              disabled={isSubmitting}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
           </div>
@@ -445,9 +455,11 @@ export function EditAppointmentModal({
           <Button
             type="submit"
             onClick={form.handleSubmit(onSubmit)}
+            disabled={isSubmitting}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            Save Changes
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Update Appointment
           </Button>
           <DrawerClose asChild>
             <Button variant="outline">Cancel</Button>
