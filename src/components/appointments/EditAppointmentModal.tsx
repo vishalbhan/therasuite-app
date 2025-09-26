@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDateWithTimezone } from '@/lib/timezone';
+import { decryptSingleValue } from '@/lib/encryption';
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -34,6 +36,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
 import { Database } from "@/types/database.types";
+import { Appointment } from "@/types/supabase";
 
 const formSchema = z.object({
   session_date: z.date({
@@ -66,12 +69,7 @@ type FormErrors = {
 interface EditAppointmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  appointment: {
-    id: string;
-    session_date: string;
-    session_length: number;
-    notes?: string;
-  } | null;
+  appointment: Appointment | null;
   onSuccess?: () => void;
 }
 
@@ -107,7 +105,7 @@ function EditAppointmentForm({
         </div>
       )}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-6">
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -304,25 +302,73 @@ export function EditAppointmentModal({
           .eq('id', appointment.therapist_id)
           .single();
 
+        // Get client timezone
+        let clientTimezone = 'Asia/Kolkata'; // default
+        try {
+          const { data: clientData, error: timezoneError } = await supabase
+            .from('clients')
+            .select('timezone')
+            .eq('id', appointment.client_id)
+            .eq('therapist_id', appointment.therapist_id)
+            .single();
+          
+          if (timezoneError) {
+            console.warn('Could not fetch client timezone, using default:', timezoneError);
+          } else if (clientData?.timezone) {
+            clientTimezone = clientData.timezone;
+          }
+        } catch (error) {
+          console.warn('Could not fetch client timezone, using default:', error);
+        }
+
+        // Format dates with timezone (with error handling)
+        let formattedSessionDate, formattedOldDate;
+        try {
+          formattedSessionDate = formatDateWithTimezone(session_date.toISOString(), clientTimezone, 'PPP p');
+          formattedOldDate = formatDateWithTimezone(appointment.session_date, clientTimezone, 'PPP p');
+        } catch (error) {
+          console.error('Error formatting dates:', error);
+          // Fallback to simple date formatting without timezone
+          formattedSessionDate = new Date(session_date).toLocaleString();
+          formattedOldDate = new Date(appointment.session_date).toLocaleString();
+        }
+
+        // Decrypt client data for email
+        let decryptedClientName, decryptedClientEmail;
+        try {
+          decryptedClientName = await decryptSingleValue(appointment.client_name);
+          decryptedClientEmail = await decryptSingleValue(appointment.client_email);
+        } catch (error) {
+          console.error('Error decrypting client data:', error);
+          // Fallback to encrypted values (though email will fail)
+          decryptedClientName = appointment.client_name;
+          decryptedClientEmail = appointment.client_email;
+        }
+
+        const emailData = {
+          type: 'appointment_rescheduled',
+          data: {
+            client_name: decryptedClientName,
+            client_email: decryptedClientEmail,
+            session_date: session_date.toISOString(),
+            session_type: appointment.session_type,
+            session_length: parseInt(values.session_length),
+            therapist_name: therapist?.full_name || 'Your Therapist',
+            therapist_photo_url: therapist?.photo_url || '',
+            old_date: appointment.session_date,
+            formatted_session_date: formattedSessionDate,
+            formatted_old_date: formattedOldDate,
+            client_timezone: clientTimezone
+          }
+        };
+
         const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({
-            type: 'appointment_rescheduled',
-            data: {
-              client_name: appointment.client_name,
-              client_email: appointment.client_email,
-              session_date: session_date.toISOString(),
-              session_type: appointment.session_type,
-              session_length: parseInt(values.session_length),
-              therapist_name: therapist?.full_name || 'Your Therapist',
-              therapist_photo_url: therapist?.photo_url || '',
-              old_date: appointment.session_date
-            }
-          })
+          body: JSON.stringify(emailData)
         });
 
         if (!emailResponse.ok) {

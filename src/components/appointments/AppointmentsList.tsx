@@ -204,6 +204,23 @@ export function AppointmentsList({
         throw new Error('Failed to fetch therapist details');
       }
 
+      // Get client timezone
+      let clientTimezone = 'Asia/Kolkata'; // default
+      try {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('timezone')
+          .eq('id', appointmentToCancel.client_id)
+          .eq('therapist_id', user.id)
+          .single();
+        
+        if (clientData?.timezone) {
+          clientTimezone = clientData.timezone;
+        }
+      } catch (error) {
+        console.warn('Could not fetch client timezone, using default:', error);
+      }
+
       // Send cancellation email with enhanced data
       const decryptedCancellingAppointment = decryptedAppointments.find(a => a.id === appointmentToCancel.id);
       await emailService.sendAppointmentCancellation({
@@ -214,7 +231,8 @@ export function AppointmentsList({
         session_type: appointmentToCancel.session_type,
         location: appointmentToCancel.location,
         therapist_name: therapist.full_name || 'Your Therapist',
-        therapist_photo_url: therapist.photo_url
+        therapist_photo_url: therapist.photo_url,
+        client_timezone: clientTimezone
       });
 
       toast({
@@ -465,6 +483,26 @@ export function AppointmentsList({
       const reminderClientName = decryptedReminderAppointment?.decrypted_client_name || appointment.client_name;
       const reminderClientEmail = decryptedReminderAppointment?.decrypted_client_email || appointment.client_email;
 
+      // Get client timezone
+      let clientTimezone = 'Asia/Kolkata'; // default
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('timezone')
+            .eq('id', appointment.client_id)
+            .eq('therapist_id', user.id)
+            .single();
+          
+          if (clientData?.timezone) {
+            clientTimezone = clientData.timezone;
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch client timezone, using default:', error);
+      }
+
       await emailService.sendAppointmentReminder({
         client_name: reminderClientName,
         client_email: reminderClientEmail,
@@ -475,6 +513,7 @@ export function AppointmentsList({
         therapist_name: therapistName,
         therapist_photo_url: therapistPhotoUrl,
         video_link: videoLink,
+        client_timezone: clientTimezone,
       });
 
       toast({

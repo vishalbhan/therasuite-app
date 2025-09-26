@@ -47,6 +47,7 @@ import { Loader2, CheckCircle, Calendar as CalendarIcon2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { encryptClientData, decryptSingleValue } from '@/lib/encryption';
+import { formatDateWithTimezone } from '@/lib/timezone';
 
 const PURPLE_GRADIENT = "bg-[#F5F1FF]";
 const DISABLED_INPUT_BG = "bg-gray-50";
@@ -175,6 +176,7 @@ interface ExistingClient {
   id: string;
   name: string;
   email: string;
+  timezone?: string;
   decrypted_name?: string;
   decrypted_email?: string;
 }
@@ -861,7 +863,7 @@ export function CreateAppointmentModal({
 
       const { data: clients, error } = await supabase
         .from('clients')
-        .select('id, name, email')
+        .select('id, name, email, timezone')
         .eq('therapist_id', user.id);
 
       if (error) {
@@ -871,7 +873,7 @@ export function CreateAppointmentModal({
 
       // Decrypt client data
       const clientsWithDecryption = await Promise.all(
-        (clients || []).map(async (client) => ({
+        (clients || []).map(async (client: any) => ({
           ...client,
           decrypted_name: await decryptSingleValue(client.name),
           decrypted_email: await decryptSingleValue(client.email)
@@ -1122,12 +1124,13 @@ export function CreateAppointmentModal({
               therapist_id: user.id,
               name: encryptedData.name,
               email: encryptedData.email,
+              timezone: 'Asia/Kolkata', // Default timezone for new clients
               avatar_color: generateRandomColor(),
               initials: getInitials(values.client_name),
-            } as Database['public']['Tables']['clients']['Insert'], {
+            } as any, {
               onConflict: 'therapist_id,email'
             })
-            .select()
+            .select('*')
             .single();
 
           if (clientError) throw clientError;
@@ -1140,7 +1143,7 @@ export function CreateAppointmentModal({
           email: values.client_email
         });
 
-        const appointmentData: Database['public']['Tables']['appointments']['Insert'] = {
+        const appointmentData = {
           therapist_id: user.id,
           client_id: client.id,
           client_name: appointmentClientData.name,
@@ -1160,7 +1163,7 @@ export function CreateAppointmentModal({
         // Create appointment
         const { data: appointment, error: appointmentError } = await supabase
           .from('appointments')
-          .insert(appointmentData)
+          .insert(appointmentData as any)
           .select()
           .single();
 
@@ -1218,6 +1221,16 @@ export function CreateAppointmentModal({
             console.error('Error fetching therapist details:', therapistError);
           }
 
+          // Get client timezone from the client record we already have
+          let clientTimezone = 'Asia/Kolkata'; // default
+          if (client && 'timezone' in client && client.timezone) {
+            clientTimezone = client.timezone;
+          } else {
+            console.warn('Client timezone not available, using default IST');
+          }
+          
+          const formattedDate = formatDateWithTimezone(currentSessionDate.toISOString(), clientTimezone, 'PPP p');
+
           const emailResponse = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
             method: 'POST',
             headers: {
@@ -1238,6 +1251,8 @@ export function CreateAppointmentModal({
                   `${values.location.address}, ${values.location.city}, ${values.location.state} - ${values.location.postal_code}, ${values.location.country}` 
                   : undefined,
                 video_link: videoLink,
+                client_timezone: clientTimezone,
+                formatted_session_date: formattedDate,
               }
             })
           });

@@ -5,8 +5,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
-// Helpers to format dates/times in Asia/Kolkata with ordinal day
-const INDIAN_TZ = 'Asia/Kolkata';
+// Helper functions to format dates/times in client's timezone
 function getOrdinalSuffix(day: number): string {
   const j = day % 10, k = day % 100;
   if (j === 1 && k !== 11) return 'st';
@@ -14,10 +13,11 @@ function getOrdinalSuffix(day: number): string {
   if (j === 3 && k !== 13) return 'rd';
   return 'th';
 }
-function formatDateIST(dateInput: string | Date): string {
+
+function formatDateInTimezone(dateInput: string | Date, timezone: string = 'Asia/Kolkata'): string {
   const date = new Date(dateInput);
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: INDIAN_TZ,
+    timeZone: timezone,
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -29,13 +29,38 @@ function formatDateIST(dateInput: string | Date): string {
   const suffix = getOrdinalSuffix(dayNum);
   return `${dayNum}${suffix} ${monthStr} ${yearStr}`;
 }
-function formatTimeIST(dateInput: string | Date): string {
+
+function formatTimeInTimezone(dateInput: string | Date, timezone: string = 'Asia/Kolkata'): string {
   return new Date(dateInput).toLocaleString('en-US', {
-    timeZone: INDIAN_TZ,
+    timeZone: timezone,
     hour: 'numeric',
     minute: 'numeric',
     hour12: true,
   });
+}
+
+function getTimezoneAbbreviation(timezone: string, date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const timeZoneName = parts.find(part => part.type === 'timeZoneName');
+    return timeZoneName?.value || timezone;
+  } catch (error) {
+    console.warn(`Could not get timezone abbreviation for ${timezone}:`, error);
+    return timezone;
+  }
+}
+
+// Legacy functions for backward compatibility
+function formatDateIST(dateInput: string | Date): string {
+  return formatDateInTimezone(dateInput, 'Asia/Kolkata');
+}
+function formatTimeIST(dateInput: string | Date): string {
+  return formatTimeInTimezone(dateInput, 'Asia/Kolkata');
 }
 
 // Common email template wrapper
@@ -165,8 +190,7 @@ serve(async (req) => {
 
               <h2>Appointment Details</h2>
               <ul style="list-style: none; padding-left: 0;">
-                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
-                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
+                <li>📅 <strong>Date & Time:</strong> ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
                 ${data.session_type === 'in_person' && data.location ? 
@@ -212,8 +236,7 @@ serve(async (req) => {
 
               <h2>Cancelled Appointment Details</h2>
               <ul style="list-style: none; padding-left: 0;">
-                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
-                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
+                <li>📅 <strong>Date & Time:</strong> ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
                 ${data.session_type === 'in_person' && data.location ? 
@@ -271,8 +294,7 @@ serve(async (req) => {
 
               <h2>Appointment Details</h2>
               <ul style="list-style: none; padding-left: 0;">
-                <li>📅 <strong>Date:</strong> ${formatDateIST(data.session_date)}</li>
-                <li>⏰ <strong>Time:</strong> ${formatTimeIST(data.session_date)}</li>
+                <li>📅 <strong>Date & Time:</strong> ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
                 ${data.session_type === 'in_person' && data.location ? 
@@ -344,7 +366,7 @@ serve(async (req) => {
               </div>
 
               <h2>Invoice Details</h2>
-              <p>Here is your invoice for the session on ${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}.</p>
+              <p>Here is your invoice for the session on ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}.</p>
               <h3>Amount Due: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(data.price)}</h3>
               <br/>
               <h3>Payment Details:</h3>
@@ -381,10 +403,10 @@ serve(async (req) => {
               <h2>Updated Appointment Details</h2>
               <p>Your appointment has been rescheduled from:</p>
               <p><strong>Old Date & Time:</strong><br/>
-              ${formatDateIST(data.old_date)} at ${formatTimeIST(data.old_date)}</p>
+              ${data.formatted_old_date || `${formatDateIST(data.old_date)} at ${formatTimeIST(data.old_date)}`}</p>
               
               <p><strong>New Date & Time:</strong><br/>
-              ${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}</p>
+              ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}</p>
 
               <ul style="list-style: none; padding-left: 0; margin-top: 20px;">
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>

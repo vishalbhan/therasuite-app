@@ -182,6 +182,23 @@ export default function Invoices() {
       const clientName = decryptedAppointment?.decrypted_client_name || appointment.client_name;
       const clientEmail = decryptedAppointment?.decrypted_client_email || appointment.client_email;
 
+      // Get client timezone
+      let clientTimezone = 'Asia/Kolkata'; // default
+      try {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('timezone')
+          .eq('id', appointment.client_id)
+          .eq('therapist_id', user.id)
+          .single();
+        
+        if (clientData?.timezone) {
+          clientTimezone = clientData.timezone;
+        }
+      } catch (error) {
+        console.warn('Could not fetch client timezone, using default:', error);
+      }
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-email`, {
         method: 'POST',
         headers: {
@@ -197,7 +214,8 @@ export default function Invoices() {
             price: appointment.price,
             payment_details: paymentDetails,
             therapist_name: therapistProfile.full_name,
-            therapist_photo_url: therapistProfile.photo_url
+            therapist_photo_url: therapistProfile.photo_url,
+            client_timezone: clientTimezone
           }
         })
       });

@@ -20,6 +20,7 @@ import { AIClientNotesSummary } from '@/components/clients/AIClientNotesSummary'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { TimezoneSelector } from '@/components/ui/timezone-selector';
 
 // Update the Database type definition to include the new fields
 type Database = {
@@ -32,6 +33,7 @@ type Database = {
         email: string
         phone_number?: string // Add phone number field
         diagnosis?: string // Add diagnosis field
+        timezone: string // Add timezone field
         avatar_color: string
         initials: string
         created_at: string
@@ -96,6 +98,7 @@ export default function ClientDetails() {
   } | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [diagnosis, setDiagnosis] = useState<string>('');
+  const [timezone, setTimezone] = useState<string>('Asia/Kolkata');
   const [email, setEmail] = useState<string>('');
   const [clientName, setClientName] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
@@ -104,7 +107,8 @@ export default function ClientDetails() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
-    email: ''
+    email: '',
+    timezone: 'Asia/Kolkata'
   });
 
   useEffect(() => {
@@ -169,6 +173,7 @@ export default function ClientDetails() {
       setClientName(decryptedName);
       setPhoneNumber(client.phone_number || '');
       setDiagnosis(client.diagnosis || '');
+      setTimezone(client.timezone || 'Asia/Kolkata');
       setEmail(decryptedEmail);
     }
   }, [client, decryptedName, decryptedEmail]);
@@ -196,6 +201,7 @@ export default function ClientDetails() {
           name: encryptedData.name,
           phone_number: phoneNumber,
           diagnosis: diagnosis,
+          timezone: timezone,
           email: encryptedData.email
         })
         .eq('id', clientId);
@@ -209,6 +215,7 @@ export default function ClientDetails() {
           name: encryptedData.name,
           phone_number: phoneNumber,
           diagnosis: diagnosis,
+          timezone: timezone,
           email: encryptedData.email
         });
         // Update decrypted values too
@@ -248,7 +255,8 @@ export default function ClientDetails() {
   const handleOpenEditModal = () => {
     setEditFormData({
       name: decryptedName,
-      email: decryptedEmail
+      email: decryptedEmail,
+      timezone: client?.timezone || 'Asia/Kolkata'
     });
     setShowEditModal(true);
   };
@@ -274,7 +282,8 @@ export default function ClientDetails() {
         .from('clients')
         .update({
           name: encryptedData.name,
-          email: encryptedData.email
+          email: encryptedData.email,
+          timezone: editFormData.timezone
         })
         .eq('id', clientId);
         
@@ -285,7 +294,8 @@ export default function ClientDetails() {
         setClient({
           ...client,
           name: encryptedData.name,
-          email: encryptedData.email
+          email: encryptedData.email,
+          timezone: editFormData.timezone
         });
         // Update decrypted values too
         setDecryptedName(editFormData.name.trim());
@@ -532,6 +542,14 @@ export default function ClientDetails() {
                   placeholder="Client email"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-timezone">Timezone</Label>
+                <TimezoneSelector
+                  value={editFormData.timezone}
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, timezone: value }))}
+                  placeholder="Select timezone..."
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowEditModal(false)}>
@@ -567,6 +585,14 @@ export default function ClientDetails() {
                   value={editFormData.email}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="Client email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-timezone-mobile">Timezone</Label>
+                <TimezoneSelector
+                  value={editFormData.timezone}
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, timezone: value }))}
+                  placeholder="Select timezone..."
                 />
               </div>
             </div>

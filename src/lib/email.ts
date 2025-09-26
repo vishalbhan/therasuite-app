@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDateWithTimezone } from '@/lib/timezone';
 
 // Initialize Resend with your API key
 const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
@@ -12,6 +13,8 @@ export const emailService = {
     session_date: string;
     session_type: string;
     session_length: number;
+    client_timezone?: string;
+    formatted_session_date?: string;
   }) {
     try {
       // Get the current session
@@ -26,7 +29,14 @@ export const emailService = {
         },
         body: JSON.stringify({
           type: 'appointment_confirmation',
-          data: appointment
+          data: {
+            ...appointment,
+            // Use the formatted_session_date if provided, otherwise format it here
+            formatted_session_date: appointment.formatted_session_date || 
+              (appointment.client_timezone 
+                ? formatDateWithTimezone(appointment.session_date, appointment.client_timezone, 'PPP p')
+                : appointment.session_date)
+          }
         })
       });
 
@@ -50,6 +60,8 @@ export const emailService = {
     location?: string;
     therapist_name: string;
     therapist_photo_url?: string;
+    client_timezone?: string;
+    formatted_session_date?: string;
   }) {
     try {
       // Get the current session
@@ -64,7 +76,14 @@ export const emailService = {
         },
         body: JSON.stringify({
           type: 'appointment_cancellation',
-          data: appointment
+          data: {
+            ...appointment,
+            // Use the formatted_session_date if provided, otherwise format it here
+            formatted_session_date: appointment.formatted_session_date || 
+              (appointment.client_timezone 
+                ? formatDateWithTimezone(appointment.session_date, appointment.client_timezone, 'PPP p')
+                : appointment.session_date)
+          }
         })
       });
 
@@ -89,6 +108,8 @@ export const emailService = {
     therapist_name: string;
     therapist_photo_url?: string;
     video_link?: string;
+    client_timezone?: string;
+    formatted_session_date?: string;
   }) {
     try {
       // Get the current session
@@ -103,7 +124,14 @@ export const emailService = {
         },
         body: JSON.stringify({
           type: 'appointment_reminder',
-          data: appointment
+          data: {
+            ...appointment,
+            // Use the formatted_session_date if provided, otherwise format it here
+            formatted_session_date: appointment.formatted_session_date || 
+              (appointment.client_timezone 
+                ? formatDateWithTimezone(appointment.session_date, appointment.client_timezone, 'PPP p')
+                : appointment.session_date)
+          }
         })
       });
 
@@ -124,6 +152,8 @@ export const emailService = {
     session_date: string;
     price: number;
     payment_details: string;
+    client_timezone?: string;
+    formatted_session_date?: string;
   }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -137,7 +167,14 @@ export const emailService = {
         },
         body: JSON.stringify({
           type: 'payment_invoice',
-          data
+          data: {
+            ...data,
+            // Use the formatted_session_date if provided, otherwise format it here
+            formatted_session_date: data.formatted_session_date || 
+              (data.client_timezone 
+                ? formatDateWithTimezone(data.session_date, data.client_timezone, 'PPP p')
+                : data.session_date)
+          }
         })
       });
 

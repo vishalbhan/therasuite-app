@@ -28,6 +28,9 @@ export interface Database {
           therapist_id: string;
           name: string;
           email: string;
+          phone_number?: string;
+          diagnosis?: string;
+          timezone: string;
           avatar_color: string;
           initials: string;
         };
@@ -105,6 +108,7 @@ export interface Client {
   email: string;
   phone_number?: string;
   diagnosis?: string;
+  timezone: string;
   avatar_color: string;
   initials: string;
   created_at: string;
