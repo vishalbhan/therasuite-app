@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Outlet } from "react-router-dom";
-import LogRocket from "logrocket";
+import * as Sentry from "@sentry/react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export function ProtectedRoute() {
@@ -19,8 +19,9 @@ export function ProtectedRoute() {
           return;
         }
 
-        // Add LogRocket identification
-        LogRocket.identify(session.user.id, {
+        // Add Sentry user identification
+        Sentry.setUser({
+          id: session.user.id,
           email: session.user.email,
         });
 
@@ -31,11 +32,12 @@ export function ProtectedRoute() {
           .eq('id', session.user.id)
           .single();
 
-        // Update LogRocket with name if available
+        // Update Sentry with name if available
         if (profile?.full_name) {
-          LogRocket.identify(session.user.id, {
+          Sentry.setUser({
+            id: session.user.id,
             email: session.user.email,
-            name: profile.full_name,
+            username: profile.full_name,
           });
         }
 

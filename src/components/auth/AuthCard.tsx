@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as z from "zod";
-import LogRocket from "logrocket";
+import * as Sentry from "@sentry/react";
 import { AuthError } from "@supabase/supabase-js";
 
 const AuthCard = () => {
@@ -32,8 +32,9 @@ const AuthCard = () => {
         
         if (error) throw error;
 
-        // Add LogRocket identification
-        LogRocket.identify(data.user.id, {
+        // Add Sentry user identification
+        Sentry.setUser({
+          id: data.user.id,
           email: data.user.email,
         });
 
@@ -44,11 +45,12 @@ const AuthCard = () => {
           .eq('id', data.user.id)
           .single();
 
-        // Update LogRocket with name if available
+        // Update Sentry with name if available
         if (profile?.full_name) {
-          LogRocket.identify(data.user.id, {
+          Sentry.setUser({
+            id: data.user.id,
             email: data.user.email,
-            name: profile.full_name,
+            username: profile.full_name,
           });
         }
 

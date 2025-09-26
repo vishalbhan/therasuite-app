@@ -18,12 +18,18 @@ import AuthCard from "@/components/auth/AuthCard";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import ClientVideoSession from "@/pages/ClientVideoSession";
 import Settings from "@/pages/Settings";
-import LogRocket from 'logrocket';
+import * as Sentry from "@sentry/react";
 import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import Notes from "@/pages/Notes";
-LogRocket.init('vb-mindful-pvt-ltd/therasuite');
+
+Sentry.init({
+  dsn: "https://c334fd579dde037ecd1c5bce5e10f0fe@o4509881793380352.ingest.us.sentry.io/4509881799802880",
+  // Setting this option to true will send default PII data to Sentry.
+  // For example, automatic IP address collection on events
+  sendDefaultPii: true
+});
 
 const App = () => {
   return (
