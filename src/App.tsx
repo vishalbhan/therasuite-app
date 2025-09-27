@@ -28,7 +28,32 @@ Sentry.init({
   dsn: "https://c334fd579dde037ecd1c5bce5e10f0fe@o4509881793380352.ingest.us.sentry.io/4509881799802880",
   // Setting this option to true will send default PII data to Sentry.
   // For example, automatic IP address collection on events
-  sendDefaultPii: true
+  sendDefaultPii: true,
+  beforeSend(event, hint) {
+    // Filter out specific Dyte audio device detection errors
+    if (event.exception?.values) {
+      for (const exception of event.exception.values) {
+        if (exception.value?.includes('ERR1608') || 
+            exception.value?.includes('No audio output devices') ||
+            exception.value?.includes('No speaker found') ||
+            exception.value?.includes('LocalMediaHandler')) {
+          console.warn('Filtering out non-critical Dyte audio detection error:', exception.value);
+          return null; // Don't send this event to Sentry
+        }
+      }
+    }
+
+    // Filter out errors in the error message/fingerprint
+    if (event.message?.includes('ERR1608') || 
+        event.message?.includes('No audio output devices') ||
+        event.message?.includes('No speaker found')) {
+      console.warn('Filtering out non-critical Dyte audio detection error:', event.message);
+      return null;
+    }
+
+    // Allow all other events to be sent
+    return event;
+  }
 });
 
 const App = () => {
