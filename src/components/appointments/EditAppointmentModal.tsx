@@ -279,13 +279,13 @@ export function EditAppointmentModal({
         return;
       }
 
-      const updateData: Database['public']['Tables']['appointments']['Update'] = {
+      const updateData = {
         session_date: session_date.toISOString(),
         session_length: parseInt(values.session_length),
         notes: values.notes,
       };
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("appointments")
         .update(updateData)
         .eq("id", appointment.id);
@@ -293,6 +293,74 @@ export function EditAppointmentModal({
       if (error) {
         console.error('Update error:', error);
         throw new Error(error.message || "Failed to update appointment");
+      }
+
+      // Update notification queue for rescheduled appointment
+      try {
+        // Get user's notification preferences to calculate new reminder time
+        const { data: preferences } = await supabase
+          .from('notification_preferences')
+          .select('appointment_reminder_enabled, reminder_minutes_before')
+          .eq('user_id', appointment.therapist_id)
+          .maybeSingle();
+
+        if (preferences && (preferences as any).appointment_reminder_enabled) {
+          const reminderMinutes = (preferences as any).reminder_minutes_before || 15;
+          const reminderTime = new Date(session_date.getTime() - (reminderMinutes * 60 * 1000));
+          
+          // Check if the ORIGINAL appointment was within 2 hours (when notification would exist)
+          // This handles the case where appointment is rescheduled from within 2hrs to outside 2hrs
+          const twoHoursFromNow = new Date(Date.now() + 2 * 60 * 60 * 1000);
+          const originalAppointmentDate = new Date(appointment.session_date);
+          const wasOriginalWithinWindow = originalAppointmentDate <= twoHoursFromNow;
+
+          if (wasOriginalWithinWindow) {
+            // Check if a pending notification exists for this appointment
+            const { data: pendingNotifications, error: fetchError } = await (supabase as any)
+              .from("notification_queue")
+              .select("*")
+              .eq("appointment_id", appointment.id)
+              .eq("notification_type", "appointment_reminder")
+              .eq("status", "pending");
+
+            if (fetchError) {
+              console.error('Error fetching notification:', fetchError);
+            } else if (!pendingNotifications || pendingNotifications.length === 0) {
+              // No notification to update
+            } else {
+              const existingNotification = pendingNotifications[0];
+              
+              // Check if new appointment is still within notification window
+              const newAppointmentWithinWindow = session_date <= twoHoursFromNow;
+              
+              if (newAppointmentWithinWindow && reminderTime > new Date()) {
+                // Case 1: Rescheduling within the 2-hour window - update the notification time
+                const { error: updateError } = await (supabase as any)
+                  .from("notification_queue")
+                  .update({ scheduled_for: reminderTime.toISOString() })
+                  .eq("id", existingNotification.id);
+
+                if (updateError) {
+                  console.error('Error updating notification schedule:', updateError);
+                }
+              } else {
+                // Case 2: Rescheduling outside the 2-hour window OR reminder time is in the past
+                // Cancel the existing notification to prevent false alerts
+                const { error: cancelError } = await (supabase as any)
+                  .from("notification_queue")
+                  .update({ status: 'cancelled' })
+                  .eq("id", existingNotification.id);
+
+                if (cancelError) {
+                  console.error('Error cancelling notification:', cancelError);
+                }
+              }
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error updating notification queue:', notificationError);
+        // Don't throw here - appointment update was successful, notification is secondary
       }
 
       // Send rescheduling email
@@ -319,8 +387,8 @@ export function EditAppointmentModal({
           
           if (timezoneError) {
             console.warn('Could not fetch client timezone, using default:', timezoneError);
-          } else if (clientData?.timezone) {
-            clientTimezone = clientData.timezone;
+          } else if (clientData && (clientData as any).timezone) {
+            clientTimezone = (clientData as any).timezone;
           }
         } catch (error) {
           console.warn('Could not fetch client timezone, using default:', error);
@@ -358,8 +426,8 @@ export function EditAppointmentModal({
             session_date: session_date.toISOString(),
             session_type: appointment.session_type,
             session_length: parseInt(values.session_length),
-            therapist_name: therapist?.full_name || 'Your Therapist',
-            therapist_photo_url: therapist?.photo_url || '',
+            therapist_name: (therapist && (therapist as any).full_name) ? (therapist as any).full_name : 'Your Therapist',
+            therapist_photo_url: (therapist && (therapist as any).photo_url) ? (therapist as any).photo_url : '',
             old_date: appointment.session_date,
             formatted_session_date: formattedSessionDate,
             formatted_old_date: formattedOldDate,

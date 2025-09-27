@@ -182,12 +182,48 @@ export function AppointmentsList({
     if (!appointmentToCancel) return;
     
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('appointments')
         .update({ status: 'cancelled' })
         .eq('id', appointmentToCancel.id);
 
       if (error) throw error;
+
+      // Cancel notification if appointment is within 2-hour window
+      try {
+        const appointmentDate = new Date(appointmentToCancel.session_date);
+        const twoHoursFromNow = new Date(Date.now() + 2 * 60 * 60 * 1000);
+        const isWithinNotificationWindow = appointmentDate <= twoHoursFromNow;
+
+        if (isWithinNotificationWindow) {
+          // Check if a pending notification exists for this appointment
+          const { data: pendingNotifications, error: fetchError } = await (supabase as any)
+            .from("notification_queue")
+            .select("*")
+            .eq("appointment_id", appointmentToCancel.id)
+            .eq("notification_type", "appointment_reminder")
+            .eq("status", "pending");
+
+          if (fetchError) {
+            console.error('Error fetching notification for cancelled appointment:', fetchError);
+          } else if (pendingNotifications && pendingNotifications.length > 0) {
+            const existingNotification = pendingNotifications[0];
+            
+            // Cancel the notification since the appointment is cancelled
+            const { error: cancelError } = await (supabase as any)
+              .from("notification_queue")
+              .update({ status: 'cancelled' })
+              .eq("id", existingNotification.id);
+
+            if (cancelError) {
+              console.error('Error cancelling notification for cancelled appointment:', cancelError);
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error handling notification for cancelled appointment:', notificationError);
+        // Don't throw here - appointment cancellation was successful, notification is secondary
+      }
 
       // Get therapist details
       const { data: { user } } = await supabase.auth.getUser();
