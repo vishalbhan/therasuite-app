@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Power, Key } from 'lucide-react';
+import { Power, Key, CheckCircle, XCircle } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
 import {
@@ -95,6 +95,11 @@ export default function Settings() {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailability, setUsernameAvailability] = useState<{
+    available: boolean;
+    message: string;
+  } | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -120,6 +125,81 @@ export default function Settings() {
   });
 
   const { setCurrency: setGlobalCurrency } = useCurrency();
+
+  const checkUsernameAvailability = async () => {
+    const currentUsername = form.getValues('username');
+    
+    if (!currentUsername || currentUsername.trim() === '') {
+      setUsernameAvailability({
+        available: false,
+        message: 'Please enter a username to check availability'
+      });
+      return;
+    }
+
+    if (currentUsername.length < 3) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Username must be at least 3 characters'
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(currentUsername)) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Username can only contain letters, numbers, hyphens, and underscores'
+      });
+      return;
+    }
+
+    try {
+      setIsCheckingUsername(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setUsernameAvailability({
+          available: false,
+          message: 'Please sign in to check availability'
+        });
+        return;
+      }
+
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', currentUsername.toLowerCase())
+        .neq('id', session.user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        setUsernameAvailability({
+          available: false,
+          message: 'Error checking username availability'
+        });
+        return;
+      }
+
+      if (existingUser) {
+        setUsernameAvailability({
+          available: false,
+          message: 'Username is already taken'
+        });
+      } else {
+        setUsernameAvailability({
+          available: true,
+          message: 'Username is available!'
+        });
+      }
+    } catch (error) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Error checking username availability'
+      });
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -160,6 +240,11 @@ export default function Settings() {
 
     loadProfile();
   }, [form, navigate]);
+
+  // Clear username availability when username changes
+  useEffect(() => {
+    setUsernameAvailability(null);
+  }, [form.watch('username')]);
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -339,13 +424,37 @@ export default function Settings() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter your username" 
-                        {...field} 
-                        onChange={(e) => field.onChange(e.target.value.toLowerCase())}
-                      />
-                    </FormControl>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter your username" 
+                          {...field} 
+                          onChange={(e) => field.onChange(e.target.value.toLowerCase())}
+                          className="flex-1"
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={checkUsernameAvailability}
+                        disabled={isCheckingUsername || !field.value?.trim()}
+                        className="whitespace-nowrap"
+                      >
+                        {isCheckingUsername ? 'Checking...' : 'Check Availability'}
+                      </Button>
+                    </div>
+                    {usernameAvailability && (
+                      <div className={`flex items-center gap-2 text-sm ${
+                        usernameAvailability.available ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {usernameAvailability.available ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        <span>{usernameAvailability.message}</span>
+                      </div>
+                    )}
                     <FormDescription>
                       Your unique username for your public booking page: therasuite.app/{field.value || 'your-username'}
                     </FormDescription>
