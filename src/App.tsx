@@ -23,6 +23,8 @@ import ClientDetails from "@/pages/ClientDetails";
 import Invoices from "./pages/Invoices";
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import Notes from "@/pages/Notes";
+import PublicBooking from "@/pages/PublicBooking";
+import Requests from "@/pages/Requests";
 
 Sentry.init({
   dsn: "https://c334fd579dde037ecd1c5bce5e10f0fe@o4509881793380352.ingest.us.sentry.io/4509881799802880",
@@ -74,11 +76,15 @@ const App = () => {
               <Route path="/video/:appointmentId" element={<VideoSession />} />
               <Route path="/client-video/:appointmentId" element={<ClientVideoSession />} />
               
+              {/* Public booking page - must come before the catch-all route */}
+              <Route path="/:username" element={<PublicBooking />} />
+              
               {/* Wrap all dashboard routes with ProtectedRoute */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<DashboardLayout />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/schedule" element={<Schedule />} />
+                  <Route path="/requests" element={<Requests />} />
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/clients/:clientId" element={<ClientDetails />} />
                   <Route path="/notes" element={<Notes />} />

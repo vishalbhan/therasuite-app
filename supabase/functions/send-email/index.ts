@@ -148,6 +148,7 @@ serve(async (req) => {
 
   try {
     const { type, data } = await req.json();
+    
 
     switch (type) {
       case 'appointment_confirmation':
@@ -419,6 +420,48 @@ serve(async (req) => {
             </div>
 
             <p>If this new time doesn't work for you, please contact your therapist to reschedule.</p>
+            <p>Thank you for your understanding!</p>
+          `)
+        });
+        break;
+
+      case 'appointment_request_declined':
+        await resend.emails.send({
+          from: 'appointments@therasuite.app',
+          to: data.client_email,
+          subject: 'Appointment Request Update',
+          html: emailTemplate(`
+            <h1>Appointment Request Update</h1>
+            <p>Dear ${data.client_name},</p>
+            
+            <div class="details-box">
+              <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                ${data.therapist_photo_url ? 
+                  `<img src="${data.therapist_photo_url}" alt="Therapist" style="width: 60px; height: 60px; border-radius: 50%; margin-right: 15px;" />` 
+                  : ''
+                }
+                <div>
+                  <p><strong>From:</strong><br/>
+                  ${data.therapist_name}</p>
+                </div>
+              </div>
+
+              <p>Unfortunately, your recent appointment request could not be accommodated at the requested times.</p>
+              
+              ${data.decline_message ? `
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                  <p style="margin: 0;"><strong>Message from your therapist:</strong></p>
+                  <p style="margin: 10px 0 0 0; font-style: italic;">"${data.decline_message}"</p>
+                </div>
+              ` : ''}
+              
+              <p>We encourage you to submit a new request with alternative dates and times that might work better for both of you.</p>
+            </div>
+
+            <p style="text-align: center;">
+              <a href="https://therasuite.app/${data.therapist_username || ''}" target="_blank" class="button">Submit New Request</a>
+            </p>
+
             <p>Thank you for your understanding!</p>
           `)
         });

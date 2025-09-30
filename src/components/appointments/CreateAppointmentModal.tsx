@@ -188,6 +188,7 @@ interface CreateAppointmentModalProps {
   defaultClient?: { name: string; email: string } | null;
   onAppointmentCreated?: () => void;
   disableClientFields?: boolean;
+  defaultSessionLength?: string;
 }
 
 // Add a type for the location structure
@@ -772,7 +773,8 @@ export function CreateAppointmentModal({
   defaultDate,
   defaultClient,
   onAppointmentCreated,
-  disableClientFields = false
+  disableClientFields = false,
+  defaultSessionLength
 }: CreateAppointmentModalProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -795,7 +797,7 @@ export function CreateAppointmentModal({
       client_email: defaultClient?.email || "",
       session_date: defaultDate ? new Date(defaultDate) : undefined,
       session_time: defaultDate ? format(new Date(defaultDate), 'HH:mm') : "",
-      session_length: "60",
+      session_length: defaultSessionLength || "60",
       session_type: "video",
       video_provider: "therasuite",
       custom_meeting_link: null,
@@ -825,34 +827,43 @@ export function CreateAppointmentModal({
   // Reset client mode when modal opens/closes
   useEffect(() => {
     if (open) {
-      // Set initial client mode based on whether we have a default client
-      if (defaultClient) {
-        setClientMode('existing');
-      } else if (!disableClientFields) {
+      if (disableClientFields) {
+        // When client fields are disabled, we expect a defaultClient to be provided
+        // The mode will be set in the defaultClient useEffect
+        return;
+      } else if (!defaultClient) {
+        // Only set initial mode to new if no defaultClient
         setClientMode('new');
       }
+      // If defaultClient exists, let the other useEffect handle the mode setting
     }
   }, [open, defaultClient, disableClientFields]);
 
   const isRecurring = form.watch('is_recurring');
 
   useEffect(() => {
-    if (defaultClient) {
+    if (defaultClient && existingClients.length > 0) {
       form.setValue('client_name', defaultClient.name);
       form.setValue('client_email', defaultClient.email);
       
-      // Set client mode to existing when defaultClient is provided
-      setClientMode('existing');
+      // Check if client exists in the therapist's client list
+      const matchingClient = existingClients.find(client => 
+        (client.decrypted_email || client.email) === defaultClient.email
+      );
       
-      // Find the matching client ID from existing clients
-      if (existingClients.length > 0) {
-        const matchingClient = existingClients.find(client => 
-          (client.decrypted_email || client.email) === defaultClient.email
-        );
-        if (matchingClient) {
-          setSelectedClientId(matchingClient.id);
-        }
+      if (matchingClient) {
+        // Client exists - set to existing mode
+        setClientMode('existing');
+        setSelectedClientId(matchingClient.id);
+      } else {
+        // Client doesn't exist - set to new mode
+        setClientMode('new');
       }
+    } else if (defaultClient && existingClients.length === 0) {
+      // If we have a defaultClient but no existing clients loaded yet, wait
+      form.setValue('client_name', defaultClient.name);
+      form.setValue('client_email', defaultClient.email);
+      // Don't set client mode yet, wait for existing clients to load
     }
   }, [defaultClient, form, existingClients]);
 

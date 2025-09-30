@@ -15,6 +15,7 @@ export interface Database {
           email: string;
           full_name: string | null;
           photo_url: string | null;
+          username: string | null;
           professional_type: 'psychologist' | 'therapist' | 'coach' | null;
           session_length: number | null;
           session_type: 'video' | 'in_person' | 'hybrid' | null;
@@ -30,6 +31,7 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           photo_url?: string | null;
+          username?: string | null;
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null;
           session_length?: number | null;
           session_type?: 'video' | 'in_person' | 'hybrid' | null;
@@ -45,6 +47,7 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           photo_url?: string | null;
+          username?: string | null;
           professional_type?: 'psychologist' | 'therapist' | 'coach' | null;
           session_length?: number | null;
           session_type?: 'video' | 'in_person' | 'hybrid' | null;
@@ -127,6 +130,53 @@ export interface Database {
           avatar_color?: string;
           initials?: string;
           created_at?: string;
+        };
+      };
+      appointment_requests: {
+        Row: {
+          id: string;
+          therapist_id: string;
+          client_name: string;
+          client_email: string;
+          client_message: string | null;
+          preferred_dates: Json | null;
+          session_length: number | null;
+          status: 'pending' | 'approved' | 'declined' | 'expired';
+          therapist_response: string | null;
+          appointment_id: string | null;
+          created_at: string;
+          updated_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          therapist_id: string;
+          client_name: string;
+          client_email: string;
+          client_message?: string | null;
+          preferred_dates?: Json | null;
+          session_length?: number | null;
+          status?: 'pending' | 'approved' | 'declined' | 'expired';
+          therapist_response?: string | null;
+          appointment_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          therapist_id?: string;
+          client_name?: string;
+          client_email?: string;
+          client_message?: string | null;
+          preferred_dates?: Json | null;
+          session_length?: number | null;
+          status?: 'pending' | 'approved' | 'declined' | 'expired';
+          therapist_response?: string | null;
+          appointment_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
         };
       };
     };

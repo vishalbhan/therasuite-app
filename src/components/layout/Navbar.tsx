@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -6,7 +7,8 @@ import {
   Receipt,
   Plus,
   Settings,
-  FileText
+  FileText,
+  UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +17,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from "@/integrations/supabase/client";
+import { getAppointmentRequestsForTherapist } from "@/lib/appointment-requests";
 
 const navItems = [
   {
@@ -27,6 +31,11 @@ const navItems = [
     icon: Calendar,
     href: "/schedule",
     hideOnMobile: true,
+  },
+  {
+    label: "Requests",
+    icon: UserCheck,
+    href: "/requests",
   },
   {
     label: "Clients",
@@ -48,6 +57,58 @@ const navItems = [
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchPendingRequestsCount();
+      
+      // Set up real-time subscription for appointment requests
+      const channel = supabase
+        .channel('appointment_requests_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'appointment_requests',
+            filter: `therapist_id=eq.${currentUserId}`
+          },
+          () => {
+            fetchPendingRequestsCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [currentUserId]);
+
+  const fetchPendingRequestsCount = async () => {
+    if (!currentUserId) return;
+    
+    try {
+      const requests = await getAppointmentRequestsForTherapist(currentUserId);
+      const pendingCount = requests.filter(r => r.status === 'pending').length;
+      setPendingRequestsCount(pendingCount);
+    } catch (error) {
+      console.error('Error fetching pending requests count:', error);
+    }
+  };
 
   return (
     <nav className="border-b">
@@ -65,12 +126,13 @@ export function Navbar() {
               {navItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
+                const showBadge = item.label === "Requests" && pendingRequestsCount > 0;
                 
                 return (
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors relative
                       ${isActive 
                         ? 'bg-violet-100 text-violet-900' 
                         : 'text-gray-600 hover:bg-violet-50 hover:text-violet-900'
@@ -78,6 +140,11 @@ export function Navbar() {
                   >
                     <Icon className="h-4 w-4 mr-2" />
                     {item.label}
+                    {showBadge && (
+                      <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                        {pendingRequestsCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

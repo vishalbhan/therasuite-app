@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Power, Key } from 'lucide-react';
+import { Power, Key, CheckCircle, XCircle } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
 import {
@@ -56,6 +56,11 @@ import { PushNotificationSettings } from '@/components/notifications/PushNotific
 const formSchema = z.object({
   photo_url: z.string().nullable(),
   full_name: z.string().nullable(),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username must be less than 50 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, hyphens, and underscores")
+    .nullable(),
   professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
   session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
   currency: z.string(),
@@ -90,12 +95,18 @@ export default function Settings() {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailability, setUsernameAvailability] = useState<{
+    available: boolean;
+    message: string;
+  } | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       photo_url: null,
       full_name: '',
+      username: '',
       professional_type: null,
       session_type: null,
       currency: 'INR',
@@ -114,6 +125,81 @@ export default function Settings() {
   });
 
   const { setCurrency: setGlobalCurrency } = useCurrency();
+
+  const checkUsernameAvailability = async () => {
+    const currentUsername = form.getValues('username');
+    
+    if (!currentUsername || currentUsername.trim() === '') {
+      setUsernameAvailability({
+        available: false,
+        message: 'Please enter a username to check availability'
+      });
+      return;
+    }
+
+    if (currentUsername.length < 3) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Username must be at least 3 characters'
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(currentUsername)) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Username can only contain letters, numbers, hyphens, and underscores'
+      });
+      return;
+    }
+
+    try {
+      setIsCheckingUsername(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setUsernameAvailability({
+          available: false,
+          message: 'Please sign in to check availability'
+        });
+        return;
+      }
+
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', currentUsername.toLowerCase())
+        .neq('id', session.user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        setUsernameAvailability({
+          available: false,
+          message: 'Error checking username availability'
+        });
+        return;
+      }
+
+      if (existingUser) {
+        setUsernameAvailability({
+          available: false,
+          message: 'Username is already taken'
+        });
+      } else {
+        setUsernameAvailability({
+          available: true,
+          message: 'Username is available!'
+        });
+      }
+    } catch (error) {
+      setUsernameAvailability({
+        available: false,
+        message: 'Error checking username availability'
+      });
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -136,6 +222,7 @@ export default function Settings() {
         const formData = {
           photo_url: profile.photo_url ?? null,
           full_name: profile.full_name ?? '',
+          username: profile.username ?? '',
           professional_type: profile.professional_type ?? null,
           session_type: profile.session_type ?? null,
           currency: profile.currency ?? 'INR',
@@ -154,6 +241,11 @@ export default function Settings() {
     loadProfile();
   }, [form, navigate]);
 
+  // Clear username availability when username changes
+  useEffect(() => {
+    setUsernameAvailability(null);
+  }, [form.watch('username')]);
+
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSaving(true);
@@ -170,10 +262,31 @@ export default function Settings() {
         return;
       }
 
+      // Check username uniqueness if username is being updated
+      if (values.username && values.username.trim() !== '') {
+        const { data: existingUser, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', values.username.toLowerCase())
+          .neq('id', session.user.id)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
+          toast.error("Error checking username availability");
+          return;
+        }
+
+        if (existingUser) {
+          toast.error("Username is already taken. Please choose a different one.");
+          return;
+        }
+      }
+
       // Create update object based on session type
       const updateData = {
         photo_url: values.photo_url,
         full_name: values.full_name,
+        username: values.username?.toLowerCase() || null,
         professional_type: values.professional_type,
         session_type: values.session_type,
         currency: values.currency,
@@ -300,6 +413,51 @@ export default function Settings() {
                     <FormControl>
                       <Input placeholder="Enter your full name" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter your username" 
+                          {...field} 
+                          onChange={(e) => field.onChange(e.target.value.toLowerCase())}
+                          className="flex-1"
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={checkUsernameAvailability}
+                        disabled={isCheckingUsername || !field.value?.trim()}
+                        className="whitespace-nowrap"
+                      >
+                        {isCheckingUsername ? 'Checking...' : 'Check Availability'}
+                      </Button>
+                    </div>
+                    {usernameAvailability && (
+                      <div className={`flex items-center gap-2 text-sm ${
+                        usernameAvailability.available ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {usernameAvailability.available ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        <span>{usernameAvailability.message}</span>
+                      </div>
+                    )}
+                    <FormDescription>
+                      Your unique username for your public booking page: therasuite.app/{field.value || 'your-username'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

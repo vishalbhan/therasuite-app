@@ -28,6 +28,8 @@ interface ConfirmModalProps {
   description: string;
   confirmText?: string;
   cancelText?: string;
+  children?: React.ReactNode;
+  isLoading?: boolean;
 }
 
 export function ConfirmModal({
@@ -38,6 +40,8 @@ export function ConfirmModal({
   description,
   confirmText = "Continue",
   cancelText = "Cancel",
+  children,
+  isLoading = false,
 }: ConfirmModalProps) {
   const isMobile = useIsMobile();
 
@@ -49,10 +53,19 @@ export function ConfirmModal({
             <AlertDialogTitle>{title}</AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
+          {children && (
+            <div className="px-6 py-4">
+              {children}
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
-              {confirmText}
+            <AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={onConfirm} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? "Processing..." : confirmText}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -67,15 +80,21 @@ export function ConfirmModal({
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>{description}</DrawerDescription>
         </DrawerHeader>
+        {children && (
+          <div className="px-4 py-4">
+            {children}
+          </div>
+        )}
         <DrawerFooter className="pt-6">
           <Button 
             onClick={onConfirm} 
             className="bg-red-600 hover:bg-red-700 text-white"
+            disabled={isLoading}
           >
-            {confirmText}
+            {isLoading ? "Processing..." : confirmText}
           </Button>
           <DrawerClose asChild>
-            <Button variant="outline">{cancelText}</Button>
+            <Button variant="outline" disabled={isLoading}>{cancelText}</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

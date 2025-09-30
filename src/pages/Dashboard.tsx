@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     todaysSessions: { total: 0, remaining: 0 },
     weeklyHours: { total: 0, change: 0 },
@@ -54,6 +55,8 @@ export default function Dashboard() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      setCurrentUserId(user.id);
 
       // Always fetch for the selected day
       const start = startOfDay(selectedDate);
@@ -271,7 +274,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-[300px,1fr] gap-8">
+      <div className="grid md:grid-cols-[300px,1fr] gap-8 mb-8">
         <div className="order-2 md:order-1 max-w-[300px] mx-auto mb-20">
           <Calendar
             mode="single"
@@ -320,18 +323,19 @@ export default function Dashboard() {
             )}
           />
         </div>
-
-        <CreateAppointmentModal
-          open={searchParams.get("modal") === "create"}
-          onOpenChange={(open) => {
-            if (!open) {
-              searchParams.delete("modal");
-              setSearchParams(searchParams);
-            }
-          }}
-          onAppointmentCreated={handleAppointmentCreated}
-        />
       </div>
+
+
+      <CreateAppointmentModal
+        open={searchParams.get("modal") === "create"}
+        onOpenChange={(open) => {
+          if (!open) {
+            searchParams.delete("modal");
+            setSearchParams(searchParams);
+          }
+        }}
+        onAppointmentCreated={handleAppointmentCreated}
+      />
     </div>
   );
 }
