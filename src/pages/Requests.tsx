@@ -76,6 +76,31 @@ export default function Requests() {
     }
   };
 
+  if (!loading && !username) {
+    return (
+      <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+          <div className="max-w-md">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Set Your Username First</h1>
+            <p className="text-gray-600 mb-6">
+              You need to set a username to receive appointment requests. Your username will be used to create your public booking page.
+            </p>
+            <Button
+              onClick={() => window.location.href = '/settings'}
+              className="mb-4"
+            >
+              Go to Settings
+            </Button>
+            <p className="text-sm text-gray-500">
+              Once you set your username, you'll be able to share your booking page at: <br />
+              <span className="font-mono">therasuite.app/[your-username]</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container px-4 sm:px-6 mx-auto py-6 max-w-[95%] sm:max-w-7xl">
       <div className="mb-8">
