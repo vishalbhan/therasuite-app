@@ -56,6 +56,11 @@ import { PushNotificationSettings } from '@/components/notifications/PushNotific
 const formSchema = z.object({
   photo_url: z.string().nullable(),
   full_name: z.string().nullable(),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username must be less than 50 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, hyphens, and underscores")
+    .nullable(),
   professional_type: z.enum(['psychologist', 'therapist', 'coach']).nullable(),
   session_type: z.enum(['video', 'in_person', 'hybrid']).nullable(),
   currency: z.string(),
@@ -96,6 +101,7 @@ export default function Settings() {
     defaultValues: {
       photo_url: null,
       full_name: '',
+      username: '',
       professional_type: null,
       session_type: null,
       currency: 'INR',
@@ -136,6 +142,7 @@ export default function Settings() {
         const formData = {
           photo_url: profile.photo_url ?? null,
           full_name: profile.full_name ?? '',
+          username: profile.username ?? '',
           professional_type: profile.professional_type ?? null,
           session_type: profile.session_type ?? null,
           currency: profile.currency ?? 'INR',
@@ -170,10 +177,31 @@ export default function Settings() {
         return;
       }
 
+      // Check username uniqueness if username is being updated
+      if (values.username && values.username.trim() !== '') {
+        const { data: existingUser, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', values.username.toLowerCase())
+          .neq('id', session.user.id)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
+          toast.error("Error checking username availability");
+          return;
+        }
+
+        if (existingUser) {
+          toast.error("Username is already taken. Please choose a different one.");
+          return;
+        }
+      }
+
       // Create update object based on session type
       const updateData = {
         photo_url: values.photo_url,
         full_name: values.full_name,
+        username: values.username?.toLowerCase() || null,
         professional_type: values.professional_type,
         session_type: values.session_type,
         currency: values.currency,
@@ -300,6 +328,27 @@ export default function Settings() {
                     <FormControl>
                       <Input placeholder="Enter your full name" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter your username" 
+                        {...field} 
+                        onChange={(e) => field.onChange(e.target.value.toLowerCase())}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Your unique username for your public booking page: therasuite.app/{field.value || 'your-username'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
