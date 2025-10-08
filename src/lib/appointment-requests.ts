@@ -14,25 +14,18 @@ export interface CreateAppointmentRequestData {
 }
 
 export async function createAppointmentRequest(data: CreateAppointmentRequestData) {
-  const requestData: AppointmentRequestInsert = {
-    therapist_id: data.therapistId,
-    client_name: data.clientName,
-    client_email: data.clientEmail,
-    client_message: data.clientMessage || null,
-    preferred_dates: data.preferredDates,
-    session_length: data.sessionLength || 60,
-    status: 'pending',
-    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-  };
-
-  const { data: request, error } = await supabase
-    .from('appointment_requests')
-    .insert(requestData)
-    .select()
-    .single();
+  const { data: result, error } = await supabase
+    .rpc('create_public_appointment_request', {
+      p_therapist_id: data.therapistId,
+      p_client_name: data.clientName,
+      p_client_email: data.clientEmail,
+      p_client_message: data.clientMessage || null,
+      p_preferred_dates: data.preferredDates,
+      p_session_length: data.sessionLength || 60,
+    });
 
   if (error) throw error;
-  return request;
+  return result[0]; // Return the first (and only) result
 }
 
 export async function getAppointmentRequestsForTherapist(therapistId: string) {
