@@ -2,9 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Toaster as SonnerToaster } from "sonner";
 import { Toaster as AppToaster } from "@/components/ui/toaster";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { queryClient } from "@/lib/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import Schedule from "@/pages/Schedule";
@@ -64,40 +62,38 @@ const App = () => {
       <Helmet>
         <title>TheraSuite</title>
       </Helmet>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          {/* App-wide toast providers */}
-          <AppToaster />
-          <SonnerToaster />
-          <Router>
-            <Routes>
-              <Route path="/" element={<AuthLayout />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/video/:appointmentId" element={<VideoSession />} />
-              <Route path="/client-video/:appointmentId" element={<ClientVideoSession />} />
-              
-              {/* Public booking page - must come before the catch-all route */}
-              <Route path="/:username" element={<PublicBooking />} />
-              
-              {/* Wrap all dashboard routes with ProtectedRoute */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<DashboardLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/schedule" element={<Schedule />} />
-                  <Route path="/requests" element={<Requests />} />
-                  <Route path="/clients" element={<Clients />} />
-                  <Route path="/clients/:clientId" element={<ClientDetails />} />
-                  <Route path="/notes" element={<Notes />} />
-                  <Route path="/invoices" element={<Invoices />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Route>
+      <TooltipProvider>
+        {/* App-wide toast providers */}
+        <AppToaster />
+        <SonnerToaster />
+        <Router>
+          <Routes>
+            <Route path="/" element={<AuthLayout />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/video/:appointmentId" element={<VideoSession />} />
+            <Route path="/client-video/:appointmentId" element={<ClientVideoSession />} />
+            
+            {/* Public booking page - must come before the catch-all route */}
+            <Route path="/:username" element={<PublicBooking />} />
+            
+            {/* Wrap all dashboard routes with ProtectedRoute */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/requests" element={<Requests />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/clients/:clientId" element={<ClientDetails />} />
+                <Route path="/notes" element={<Notes />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
+            </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
-        </TooltipProvider>
-      </QueryClientProvider>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </TooltipProvider>
     </CurrencyProvider>
   );
 };
