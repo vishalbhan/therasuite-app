@@ -20,9 +20,16 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { PhotoUpload } from '@/components/onboarding/PhotoUpload';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Power, Key, CheckCircle, XCircle } from 'lucide-react';
+import { Power, Key, CheckCircle, XCircle, CalendarDays, X } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Database } from '@/types/database.types';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, isBefore, startOfDay } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -56,6 +63,7 @@ import { PushNotificationSettings } from '@/components/notifications/PushNotific
 const formSchema = z.object({
   photo_url: z.string().nullable(),
   full_name: z.string().nullable(),
+  phone_number: z.string().nullable(),
   username: z.string()
     .min(3, "Username must be at least 3 characters")
     .max(50, "Username must be less than 50 characters")
@@ -100,12 +108,18 @@ export default function Settings() {
     available: boolean;
     message: string;
   } | null>(null);
+  const [holidays, setHolidays] = useState<string[]>([]);
+  const [holidayPopoverOpen, setHolidayPopoverOpen] = useState(false);
+  const [pendingHolidayDates, setPendingHolidayDates] = useState<Date[]>([]);
+  const [removedHolidayDates, setRemovedHolidayDates] = useState<string[]>([]);
+  const [isSavingHolidays, setIsSavingHolidays] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       photo_url: null,
       full_name: '',
+      phone_number: '',
       username: '',
       professional_type: null,
       session_type: null,
@@ -222,6 +236,7 @@ export default function Settings() {
         const formData = {
           photo_url: profile.photo_url ?? null,
           full_name: profile.full_name ?? '',
+          phone_number: profile.phone_number ?? '',
           username: profile.username ?? '',
           professional_type: profile.professional_type ?? null,
           session_type: profile.session_type ?? null,
@@ -231,6 +246,11 @@ export default function Settings() {
         };
 
         form.reset(formData);
+
+        const profileHolidays = (profile as any).holidays;
+        if (Array.isArray(profileHolidays)) {
+          setHolidays(profileHolidays.sort());
+        }
       } catch (error) {
         toast.error("Failed to load profile");
       } finally {
@@ -240,6 +260,46 @@ export default function Settings() {
 
     loadProfile();
   }, [form, navigate]);
+
+  const updateHolidaysInDb = async (newHolidays: string[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const { error } = await (supabase as any)
+      .from('profiles')
+      .update({ holidays: newHolidays })
+      .eq('id', session.user.id);
+
+    return !error;
+  };
+
+  const confirmHolidays = async () => {
+    if (pendingHolidayDates.length === 0 && removedHolidayDates.length === 0) return;
+
+    setIsSavingHolidays(true);
+    const addedStrings = pendingHolidayDates.map(d => format(d, 'yyyy-MM-dd'));
+    const removedSet = new Set(removedHolidayDates);
+    const updated = [
+      ...holidays.filter(h => !removedSet.has(h)),
+      ...addedStrings,
+    ].sort();
+    const success = await updateHolidaysInDb(updated);
+
+    if (success) {
+      setHolidays(updated);
+      setPendingHolidayDates([]);
+      setRemovedHolidayDates([]);
+      setHolidayPopoverOpen(false);
+
+      const parts: string[] = [];
+      if (addedStrings.length > 0) parts.push(`${addedStrings.length} added`);
+      if (removedHolidayDates.length > 0) parts.push(`${removedHolidayDates.length} removed`);
+      toast.success(`Holidays updated (${parts.join(', ')})`);
+    } else {
+      toast.error('Failed to update holidays');
+    }
+    setIsSavingHolidays(false);
+  };
 
   // Clear username availability when username changes
   useEffect(() => {
@@ -286,6 +346,7 @@ export default function Settings() {
       const updateData = {
         photo_url: values.photo_url,
         full_name: values.full_name,
+        phone_number: values.phone_number,
         username: values.username?.toLowerCase() || null,
         professional_type: values.professional_type,
         session_type: values.session_type,
@@ -412,6 +473,20 @@ export default function Settings() {
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter your full name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your phone number" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -757,6 +832,136 @@ export default function Settings() {
           )}
 
           <PushNotificationSettings />
+
+          <Separator className="my-8" />
+
+          {/* Holidays Section */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Holidays</h2>
+              <p className="text-muted-foreground">
+                Select dates when you prefer not to have any meetings
+              </p>
+            </div>
+            <div className="space-y-4">
+              <Popover open={holidayPopoverOpen} onOpenChange={(open) => {
+                setHolidayPopoverOpen(open);
+                if (!open) {
+                  setPendingHolidayDates([]);
+                  setRemovedHolidayDates([]);
+                }
+              }}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <CalendarDays className="h-4 w-4" />
+                    Add Holiday Dates
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-white border shadow-lg" align="start">
+                  <CalendarComponent
+                    mode="multiple"
+                    selected={[
+                      ...holidays
+                        .filter(h => !removedHolidayDates.includes(h))
+                        .map(h => new Date(h + 'T00:00:00')),
+                      ...pendingHolidayDates,
+                    ]}
+                    onSelect={(dates) => {
+                      const selectedStrings = new Set(
+                        (dates || []).map(d => format(d, 'yyyy-MM-dd'))
+                      );
+                      const existingSet = new Set(holidays);
+
+                      const newAdded = (dates || []).filter(
+                        d => !existingSet.has(format(d, 'yyyy-MM-dd'))
+                      );
+                      setPendingHolidayDates(newAdded);
+
+                      const nowRemoved = holidays.filter(h => !selectedStrings.has(h));
+                      setRemovedHolidayDates(nowRemoved);
+                    }}
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                    initialFocus
+                  />
+                  <div className="p-3 border-t flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {pendingHolidayDates.length > 0 && `+${pendingHolidayDates.length}`}
+                      {pendingHolidayDates.length > 0 && removedHolidayDates.length > 0 && ', '}
+                      {removedHolidayDates.length > 0 && `-${removedHolidayDates.length}`}
+                      {pendingHolidayDates.length === 0 && removedHolidayDates.length === 0 && 'No changes'}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={confirmHolidays}
+                      disabled={(pendingHolidayDates.length === 0 && removedHolidayDates.length === 0) || isSavingHolidays}
+                    >
+                      {isSavingHolidays ? 'Saving...' : 'Confirm'}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {holidays.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const groups: string[][] = [];
+                    const sorted = [...holidays].sort();
+                    let current: string[] = [sorted[0]];
+
+                    for (let i = 1; i < sorted.length; i++) {
+                      const prev = new Date(sorted[i - 1] + 'T00:00:00');
+                      const curr = new Date(sorted[i] + 'T00:00:00');
+                      const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+                      if (diffDays === 1) {
+                        current.push(sorted[i]);
+                      } else {
+                        groups.push(current);
+                        current = [sorted[i]];
+                      }
+                    }
+                    groups.push(current);
+
+                    return groups.map((group) => {
+                      const firstDate = new Date(group[0] + 'T00:00:00');
+                      const lastDate = new Date(group[group.length - 1] + 'T00:00:00');
+                      const label = group.length === 1
+                        ? format(firstDate, 'MMM d')
+                        : `${format(firstDate, 'MMM d')} – ${format(lastDate, 'MMM d')}`;
+
+                      return (
+                        <span
+                          key={group[0]}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium"
+                        >
+                          {label}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const newHolidays = holidays.filter(h => !group.includes(h));
+                              const success = await updateHolidaysInDb(newHolidays);
+                              if (success) {
+                                setHolidays(newHolidays);
+                                toast.success(group.length === 1 ? 'Holiday removed' : `${group.length} holidays removed`);
+                              } else {
+                                toast.error('Failed to remove holiday');
+                              }
+                            }}
+                            className="ml-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No holidays added yet. Add dates when you'd like to block appointments.
+                </p>
+              )}
+            </div>
+          </div>
 
           <Separator className="my-8" />
 

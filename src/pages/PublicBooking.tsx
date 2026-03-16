@@ -53,6 +53,7 @@ export default function PublicBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [therapistHolidays, setTherapistHolidays] = useState<string[]>([]);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
@@ -98,6 +99,15 @@ export default function PublicBooking() {
 
     fetchTherapist();
   }, [username, form]);
+
+  useEffect(() => {
+    if (therapist) {
+      const profileHolidays = (therapist as any).holidays;
+      if (Array.isArray(profileHolidays)) {
+        setTherapistHolidays(profileHolidays);
+      }
+    }
+  }, [therapist]);
 
   const onSubmit = async (values: BookingFormValues) => {
     if (!therapist) return;
@@ -404,7 +414,8 @@ export default function PublicBooking() {
                                   onSelect={field.onChange}
                                   disabled={(date) =>
                                     isBefore(date, startOfDay(new Date())) || 
-                                    date > addDays(new Date(), 90)
+                                    date > addDays(new Date(), 90) ||
+                                    therapistHolidays.includes(format(date, 'yyyy-MM-dd'))
                                   }
                                   initialFocus
                                 />

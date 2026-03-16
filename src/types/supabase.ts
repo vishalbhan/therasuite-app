@@ -14,6 +14,7 @@ export interface Database {
           session_type: 'video' | 'in_person';
           status: 'scheduled' | 'completed' | 'cancelled';
           price: number;
+          pdf_invoice?: string | null;
           notes?: string;
           video_provider?: string | null;
           custom_meeting_link?: string | null;
@@ -42,6 +43,7 @@ export interface Database {
           id: string;
           created_at?: string;
           email?: string;
+          phone_number?: string | null;
           full_name?: string;
           photo_url?: string;
           location?: {
@@ -51,6 +53,7 @@ export interface Database {
             country: string;
             postal_code: string;
           };
+          holidays?: string[] | null;
         };
         Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['profiles']['Row']>;
@@ -124,6 +127,7 @@ export type Appointment = {
   session_length: number;
   session_type: 'video' | 'in_person';
   price: number;
+  pdf_invoice?: string | null;
   notes?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'expired';
   video_provider?: 'therasuite' | 'google_meet' | 'zoom' | null;

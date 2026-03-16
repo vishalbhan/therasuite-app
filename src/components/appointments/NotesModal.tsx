@@ -27,6 +27,7 @@ interface NotesModalProps {
   callStartTime: Date | null;
   callEndTime: Date | null;
   currentPrice?: number;
+  currentSessionLength?: number;
   hideSessionDetails?: boolean;
   onSuccess?: () => void;
 }
@@ -37,6 +38,8 @@ function NotesContent({
   setNotes,
   finalPrice,
   setFinalPrice,
+  finalDuration,
+  setFinalDuration,
   callStartTime,
   callEndTime,
   hideSessionDetails,
@@ -47,6 +50,8 @@ function NotesContent({
   setNotes: (notes: string) => void;
   finalPrice: string;
   setFinalPrice: (price: string) => void;
+  finalDuration: string;
+  setFinalDuration: (duration: string) => void;
   callStartTime: Date | null;
   callEndTime: Date | null;
   hideSessionDetails: boolean;
@@ -82,26 +87,49 @@ function NotesContent({
 
       <div className="space-y-4">
         {!hideSessionDetails && (
-          <div>
-            <Label htmlFor="final-price">Final Price</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5">
-                {currency === 'USD' ? '$' : 
-                 currency === 'EUR' ? '€' : 
-                 currency === 'GBP' ? '£' : 
-                 currency === 'AUD' ? 'A$' : 
-                 currency === 'CAD' ? 'C$' : 
-                 '₹'}
-              </span>
-              <Input
-                id="final-price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={finalPrice}
-                onChange={(e) => setFinalPrice(e.target.value)}
-                className="pl-7"
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="final-price">Final Price</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5">
+                  {currency === 'USD' ? '$' : 
+                   currency === 'EUR' ? '€' : 
+                   currency === 'GBP' ? '£' : 
+                   currency === 'AUD' ? 'A$' : 
+                   currency === 'CAD' ? 'C$' : 
+                   '₹'}
+                </span>
+                <Input
+                  id="final-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={finalPrice}
+                  onChange={(e) => setFinalPrice(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="final-duration">Final Duration</Label>
+              <select
+                id="final-duration"
+                value={finalDuration}
+                onChange={(e) => setFinalDuration(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">60 minutes</option>
+                <option value="75">1 hour 15 minutes</option>
+                <option value="90">1 hour 30 minutes</option>
+                <option value="105">1 hour 45 minutes</option>
+                <option value="120">2 hours</option>
+                <option value="135">2 hours 15 minutes</option>
+                <option value="150">2 hours 30 minutes</option>
+                <option value="165">2 hours 45 minutes</option>
+                <option value="180">3 hours</option>
+              </select>
             </div>
           </div>
         )}
@@ -125,6 +153,7 @@ export function NotesModal({
   callStartTime,
   callEndTime,
   currentPrice = 0,
+  currentSessionLength = 60,
   hideSessionDetails = false,
   onSuccess,
 }: NotesModalProps) {
@@ -132,6 +161,9 @@ export function NotesModal({
   const [notes, setNotes] = useState(existingNotes);
   const [finalPrice, setFinalPrice] = useState(
     hideSessionDetails ? '' : currentPrice.toString()
+  );
+  const [finalDuration, setFinalDuration] = useState(
+    hideSessionDetails ? '60' : currentSessionLength.toString()
   );
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -151,8 +183,9 @@ export function NotesModal({
     
     if (!hideSessionDetails) {
       setFinalPrice(currentPrice.toString());
+      setFinalDuration(currentSessionLength.toString());
     }
-  }, [existingNotes, currentPrice, hideSessionDetails, open]);
+  }, [existingNotes, currentPrice, currentSessionLength, hideSessionDetails, open]);
 
   const handleSave = async () => {
     try {
@@ -161,13 +194,14 @@ export function NotesModal({
       // Encrypt the notes before saving
       const encryptedNotes = await encryptSingleValue(notes);
       
-      const updatePayload: { notes: string; status?: string; price?: number } = {
+      const updatePayload: { notes: string; status?: string; price?: number; session_length?: number } = {
         notes: encryptedNotes,
       };
 
       if (!hideSessionDetails) {
         updatePayload.status = 'completed';
         updatePayload.price = parseFloat(finalPrice) || currentPrice;
+        updatePayload.session_length = parseInt(finalDuration) || currentSessionLength;
       }
 
       const { error } = await supabase
@@ -200,6 +234,8 @@ export function NotesModal({
     setNotes,
     finalPrice,
     setFinalPrice,
+    finalDuration,
+    setFinalDuration,
     callStartTime,
     callEndTime,
     hideSessionDetails,

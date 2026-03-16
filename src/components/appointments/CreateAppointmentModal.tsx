@@ -43,7 +43,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { emailService } from '@/lib/email';
 import { Switch } from "@/components/ui/switch";
-import { Loader2, CheckCircle, Calendar as CalendarIcon2 } from "lucide-react";
+import { Loader2, CheckCircle, Calendar as CalendarIcon2, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { encryptClientData, decryptSingleValue } from '@/lib/encryption';
@@ -279,6 +279,7 @@ function CreateAppointmentForm({
   createdAppointmentData,
   handleAddToCalendar,
   handleCloseSuccessModal,
+  holidays,
   className
 }: {
   form: any;
@@ -300,6 +301,7 @@ function CreateAppointmentForm({
   createdAppointmentData: FormValues | null;
   handleAddToCalendar: () => void;
   handleCloseSuccessModal: () => void;
+  holidays: string[];
   className?: string;
 }) {
   return (
@@ -576,6 +578,22 @@ function CreateAppointmentForm({
                 />
               </div>
 
+              {(() => {
+                const selectedDate = form.watch('session_date');
+                if (selectedDate && holidays.length > 0) {
+                  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                  if (holidays.includes(dateStr)) {
+                    return (
+                      <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-md">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>You have selected this date as a holiday. Are you sure you want to continue?</span>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
+
               {isRecurring && (
                 <FormField
                   control={form.control}
@@ -788,6 +806,7 @@ export function CreateAppointmentModal({
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [holidays, setHolidays] = useState<string[]>([]);
   const { currency } = useCurrency();
 
   const form = useForm<FormValues>({
@@ -823,6 +842,28 @@ export function CreateAppointmentModal({
       form.setValue('session_time', format(date, 'HH:mm'));
     }
   }, [defaultDate, form]);
+
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('holidays')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data) {
+        const profileHolidays = (data as any).holidays;
+        if (Array.isArray(profileHolidays)) {
+          setHolidays(profileHolidays);
+        }
+      }
+    };
+
+    if (open) fetchHolidays();
+  }, [open]);
 
   // Reset client mode when modal opens/closes
   useEffect(() => {
@@ -1367,6 +1408,7 @@ export function CreateAppointmentModal({
     createdAppointmentData,
     handleAddToCalendar,
     handleCloseSuccessModal,
+    holidays,
   };
 
   if (!isMobile) {

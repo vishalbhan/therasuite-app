@@ -13,6 +13,7 @@ export interface Database {
         Row: {
           id: string;
           email: string;
+          phone_number: string | null;
           full_name: string | null;
           photo_url: string | null;
           username: string | null;
@@ -23,12 +24,14 @@ export interface Database {
           price_per_session: number | null;
           payment_details: string | null;
           location: string | null;
+          holidays: string[] | null;
           created_at: string;
           is_onboarding_complete: boolean;
         };
         Insert: {
           id: string;
           email?: string;
+          phone_number?: string | null;
           full_name?: string | null;
           photo_url?: string | null;
           username?: string | null;
@@ -39,12 +42,14 @@ export interface Database {
           price_per_session?: number | null;
           payment_details?: string | null;
           location?: string | null;
+          holidays?: string[] | null;
           created_at?: string;
           is_onboarding_complete?: boolean;
         };
         Update: {
           id?: string;
           email?: string;
+          phone_number?: string | null;
           full_name?: string | null;
           photo_url?: string | null;
           username?: string | null;
@@ -55,6 +60,7 @@ export interface Database {
           price_per_session?: number | null;
           payment_details?: string | null;
           location?: string | null;
+          holidays?: string[] | null;
           created_at?: string;
           is_onboarding_complete?: boolean;
         };
@@ -72,6 +78,7 @@ export interface Database {
           status: 'scheduled' | 'completed' | 'cancelled';
           notes: string | null;
           price: number;
+          pdf_invoice: string | null;
           created_at: string;
         };
         Insert: {
@@ -86,6 +93,7 @@ export interface Database {
           status?: 'scheduled' | 'completed' | 'cancelled';
           notes?: string | null;
           price: number;
+          pdf_invoice?: string | null;
           created_at?: string;
         };
         Update: {
@@ -100,6 +108,7 @@ export interface Database {
           status?: 'scheduled' | 'completed' | 'cancelled';
           notes?: string | null;
           price?: number;
+          pdf_invoice?: string | null;
           created_at?: string;
         };
       };
