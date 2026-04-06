@@ -165,7 +165,7 @@ export function AppointmentsList({
   const formatTimeRange = (startTime: string, lengthInMinutes: number) => {
     const startDate = new Date(startTime);
     const endDate = addMinutes(startDate, lengthInMinutes);
-    return `${format(startDate, "h:mm")} - ${format(endDate, "h:mm a")}`;
+    return `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`;
   };
 
   const handleEdit = (appointment: Appointment) => {
