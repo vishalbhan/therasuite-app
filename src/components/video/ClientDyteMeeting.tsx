@@ -1,10 +1,26 @@
-import { RealtimeKitProvider, useRealtimeKitClient } from '@cloudflare/realtimekit-react';
+import { RealtimeKitProvider, useRealtimeKitClient, useRealtimeKitMeeting } from '@cloudflare/realtimekit-react';
 import { RtkMeeting } from '@cloudflare/realtimekit-react-ui';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DyteMeetingProps {
   appointmentId: string;
+}
+
+// RtkMeeting must read the meeting from provider context (not via a prop),
+// otherwise the setup-screen Join button never completes the room join.
+function ClientMeetingView() {
+  const { meeting } = useRealtimeKitMeeting();
+
+  if (!meeting) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-600">Failed to initialize meeting</p>
+      </div>
+    );
+  }
+
+  return <RtkMeeting mode="fill" className="w-full h-screen" showSetupScreen />;
 }
 
 export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
@@ -96,12 +112,7 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
 
   return (
     <RealtimeKitProvider value={meeting}>
-      <RtkMeeting
-        meeting={meeting}
-        mode="fill"
-        className="w-full h-screen"
-        showSetupScreen
-      />
+      <ClientMeetingView />
     </RealtimeKitProvider>
   );
 }
