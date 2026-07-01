@@ -30,8 +30,8 @@ interface Position {
   y: number;
 }
 
-// RtkMeeting must read the meeting from provider context (not via a prop),
-// otherwise the setup-screen Join button never completes the room join.
+// RtkMeeting needs the meeting passed as a prop (the underlying web component
+// binds to it); the room is already joined in the parent, so skip the setup screen.
 function TherapistMeetingView() {
   const { meeting } = useRealtimeKitMeeting();
 
@@ -43,7 +43,7 @@ function TherapistMeetingView() {
     );
   }
 
-  return <RtkMeeting mode="fill" className="w-full h-screen" showSetupScreen />;
+  return <RtkMeeting meeting={meeting} mode="fill" className="w-full h-screen" showSetupScreen={false} />;
 }
 
 export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
@@ -143,13 +143,18 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           setCallStartTime(new Date());
         });
 
-        // Update the meeting state change listener
         rtkClient?.self.on('roomLeft', () => {
           setCallEndTime(new Date());
           setShowNotesModal(true);
           setHasCallEnded(true);
           setShowNotesSidebar(false);
         });
+
+        // The meeting is created in roomState 'init' but not connected.
+        // Join the room explicitly so the call actually connects.
+        if (rtkClient && rtkClient.self.roomState === 'init') {
+          await rtkClient.join();
+        }
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
         setError(error.message);
