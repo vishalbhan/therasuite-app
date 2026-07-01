@@ -8,7 +8,8 @@ interface DyteMeetingProps {
 }
 
 // RtkMeeting needs the meeting passed as a prop (the underlying web component
-// binds to it); the room is already joined in the parent, so skip the setup screen.
+// binds to it). showSetupScreen renders the preview/"waiting room" and drives
+// the join itself when the user clicks Join, so we must NOT join manually.
 function ClientMeetingView() {
   const { meeting } = useRealtimeKitMeeting();
 
@@ -20,7 +21,7 @@ function ClientMeetingView() {
     );
   }
 
-  return <RtkMeeting meeting={meeting} mode="fill" className="w-full h-screen" showSetupScreen={false} />;
+  return <RtkMeeting meeting={meeting} mode="fill" className="w-full h-screen" showSetupScreen />;
 }
 
 export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
@@ -65,20 +66,16 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
           throw new Error('Video meeting details not found');
         }
 
-        // Initialize RealtimeKit client with the stored client token
-        const rtkClient = await initMeeting({
+        // Initialize RealtimeKit client with the stored client token.
+        // We do NOT join here — the RtkMeeting setup screen shows a preview
+        // and joins on user action.
+        await initMeeting({
           authToken: appointment.video_client_token,
           defaults: {
             audio: true,
             video: true,
           },
         });
-
-        // The meeting is created in roomState 'init' but not connected.
-        // Join the room explicitly so the call actually connects.
-        if (rtkClient && rtkClient.self.roomState === 'init') {
-          await rtkClient.join();
-        }
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
         setError(error.message || 'An unexpected error occurred');
