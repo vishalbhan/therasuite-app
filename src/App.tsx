@@ -30,14 +30,14 @@ Sentry.init({
   // For example, automatic IP address collection on events
   sendDefaultPii: true,
   beforeSend(event, hint) {
-    // Filter out specific Dyte audio device detection errors
+    // Filter out specific RealtimeKit audio device detection errors
     if (event.exception?.values) {
       for (const exception of event.exception.values) {
-        if (exception.value?.includes('ERR1608') || 
+        if (exception.value?.includes('ERR1608') ||
             exception.value?.includes('No audio output devices') ||
             exception.value?.includes('No speaker found') ||
             exception.value?.includes('LocalMediaHandler')) {
-          console.warn('Filtering out non-critical Dyte audio detection error:', exception.value);
+          console.warn('Filtering out non-critical RealtimeKit audio detection error:', exception.value);
           return null; // Don't send this event to Sentry
         }
       }
@@ -47,7 +47,7 @@ Sentry.init({
     if (event.message?.includes('ERR1608') || 
         event.message?.includes('No audio output devices') ||
         event.message?.includes('No speaker found')) {
-      console.warn('Filtering out non-critical Dyte audio detection error:', event.message);
+      console.warn('Filtering out non-critical RealtimeKit audio detection error:', event.message);
       return null;
     }
 

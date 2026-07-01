@@ -8,8 +8,11 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 }
 
-// Base64 encode the API key
-const DYTE_BASE64_AUTH = btoa(`${Deno.env.get('DYTE_ORG_ID')}:${Deno.env.get('DYTE_API_KEY')}`);
+// Cloudflare RealtimeKit REST API config
+const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
+const CLOUDFLARE_APP_ID = Deno.env.get('CLOUDFLARE_APP_ID');
+const CLOUDFLARE_API_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
+const REALTIMEKIT_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/realtime/kit/${CLOUDFLARE_APP_ID}`;
 
 serve(async (req) => {
   // Log request details for debugging
@@ -49,25 +52,24 @@ serve(async (req) => {
       throw new Error(`Missing required parameters: appointmentId=${appointmentId}, therapistId=${therapistId}, clientId=${clientId}`)
     }
 
-    // Create a meeting using Dyte's API
-    const response = await fetch('https://api.dyte.io/v2/meetings', {
+    // Create a meeting using Cloudflare RealtimeKit's API
+    const response = await fetch(`${REALTIMEKIT_BASE_URL}/meetings`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${DYTE_BASE64_AUTH}`,
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         title: `Therapy Session - ${appointmentId}`,
-        preferred_region: 'ap-south-1',
         record_on_start: false,
       }),
     })
 
     const meetingResponse = await response.json()
-    console.log('Dyte API Response:', meetingResponse)
+    console.log('RealtimeKit API Response:', meetingResponse)
 
     if (!response.ok || !meetingResponse.success) {
-      throw new Error(`Dyte API error: ${JSON.stringify(meetingResponse)}`)
+      throw new Error(`RealtimeKit API error: ${JSON.stringify(meetingResponse)}`)
     }
 
     const meeting = meetingResponse.data
@@ -133,10 +135,10 @@ serve(async (req) => {
 async function createParticipantToken(meetingId: string, role: 'host' | 'participant', participantId: string) {
   console.log('Creating participant token:', { meetingId, role, participantId })
   
-  const response = await fetch(`https://api.dyte.io/v2/meetings/${meetingId}/participants`, {
+  const response = await fetch(`${REALTIMEKIT_BASE_URL}/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${DYTE_BASE64_AUTH}`,
+      'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -147,7 +149,7 @@ async function createParticipantToken(meetingId: string, role: 'host' | 'partici
   })
 
   const participantResponse = await response.json()
-  console.log('Dyte Participant API Response:', participantResponse)
+  console.log('RealtimeKit Participant API Response:', participantResponse)
 
   if (!response.ok || !participantResponse.success) {
     throw new Error(`Failed to create participant token: ${JSON.stringify(participantResponse)}`)

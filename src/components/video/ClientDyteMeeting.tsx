@@ -1,5 +1,5 @@
-import { DyteMeeting } from '@dytesdk/react-ui-kit';
-import DyteClient from '@dytesdk/web-core';
+import { RealtimeKitProvider, useRealtimeKitClient } from '@cloudflare/realtimekit-react';
+import { RtkMeeting } from '@cloudflare/realtimekit-react-ui';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,7 +8,7 @@ interface DyteMeetingProps {
 }
 
 export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
-  const [meeting, setMeeting] = useState<any>(null);
+  const [meeting, initMeeting] = useRealtimeKitClient();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,16 +49,14 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
           throw new Error('Video meeting details not found');
         }
 
-        // Initialize Dyte client with the stored client token
-        const dyteClient = await DyteClient.init({
+        // Initialize RealtimeKit client with the stored client token
+        await initMeeting({
           authToken: appointment.video_client_token,
           defaults: {
             audio: true,
             video: true,
           },
         });
-
-        setMeeting(dyteClient);
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
         setError(error.message || 'An unexpected error occurred');
@@ -97,14 +95,13 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
   }
 
   return (
-    <DyteMeeting
-      meeting={meeting}
-      className="w-full h-screen"
-      showSetupScreen
-      onError={(error) => {
-        console.error('Dyte meeting error:', error);
-        setError('Error in video call. Please try refreshing the page.');
-      }}
-    />
+    <RealtimeKitProvider value={meeting}>
+      <RtkMeeting
+        meeting={meeting}
+        mode="fill"
+        className="w-full h-screen"
+        showSetupScreen
+      />
+    </RealtimeKitProvider>
   );
 }

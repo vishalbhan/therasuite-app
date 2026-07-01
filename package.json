@@ -16,9 +16,9 @@
     "postinstall": "rm -rf node_modules/.cache"
   },
   "dependencies": {
-    "@dytesdk/react-ui-kit": "^2.1.5",
-    "@dytesdk/react-web-core": "^2.3.0",
-    "@dytesdk/web-core": "^2.3.0",
+    "@cloudflare/realtimekit": "^2.0.0",
+    "@cloudflare/realtimekit-react": "^2.0.0",
+    "@cloudflare/realtimekit-react-ui": "^2.0.0",
     "@fullcalendar/core": "^6.1.15",
     "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/interaction": "^6.1.15",
