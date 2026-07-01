@@ -1,5 +1,5 @@
-import { DyteMeeting } from '@dytesdk/react-ui-kit';
-import DyteClient from '@dytesdk/web-core';
+import { RealtimeKitProvider, useRealtimeKitClient } from '@cloudflare/realtimekit-react';
+import { RtkMeeting } from '@cloudflare/realtimekit-react-ui';
 import { useEffect, useState, MouseEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { VideoMeeting } from '@/types/dyte';
@@ -31,7 +31,7 @@ interface Position {
 }
 
 export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
-  const [meeting, setMeeting] = useState<any>(null);
+  const [meeting, initMeeting] = useRealtimeKitClient();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -113,8 +113,8 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           setDecryptedClientName(decrypted);
         }
 
-        // Initialize Dyte client with the stored therapist token
-        const dyteClient = await DyteClient.init({
+        // Initialize RealtimeKit client with the stored therapist token
+        const rtkClient = await initMeeting({
           authToken: appointmentData.video_therapist_token,
           defaults: {
             audio: true,
@@ -123,19 +123,17 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         });
 
         // Set call start time when joining
-        dyteClient.self.on('roomJoined', () => {
+        rtkClient?.self.on('roomJoined', () => {
           setCallStartTime(new Date());
         });
 
         // Update the meeting state change listener
-        dyteClient.self.on('roomLeft', () => {
+        rtkClient?.self.on('roomLeft', () => {
           setCallEndTime(new Date());
           setShowNotesModal(true);
           setHasCallEnded(true);
           setShowNotesSidebar(false);
         });
-
-        setMeeting(dyteClient);
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
         setError(error.message);
@@ -215,15 +213,14 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
 
   return (
     <div className="relative h-screen">
-      <DyteMeeting
-        meeting={meeting}
-        className="w-full h-screen"
-        showSetupScreen
-        onError={(error) => {
-          console.error('Dyte meeting error:', error);
-          setError('Error in video call. Please try refreshing the page.');
-        }}
-      />
+      <RealtimeKitProvider value={meeting}>
+        <RtkMeeting
+          meeting={meeting}
+          mode="fill"
+          className="w-full h-screen"
+          showSetupScreen
+        />
+      </RealtimeKitProvider>
 
       {/* Notes Toggle Button - Only show if call hasn't ended */}
       {!hasCallEnded && (
