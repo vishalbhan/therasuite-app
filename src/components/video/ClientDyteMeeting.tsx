@@ -30,12 +30,18 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // RTKClient.init() opens a live connection bound to this appointment's
+    // participant id, and RealtimeKit only allows one live session per
+    // participant. If this effect runs twice, the second connection evicts the
+    // first and the user's call drops. Guard against a torn-down effect and
+    // always release the connection we created.
+    let cancelled = false;
+    let client: Awaited<ReturnType<typeof initMeeting>>;
+
     const setupMeeting = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        console.log('Attempting to fetch appointment:', appointmentId);
 
         // First check if we get any results at all
         const { data: appointments, error: queryError } = await supabase
@@ -44,13 +50,10 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
           .eq('id', appointmentId)
           .throwOnError();
 
-        console.log('Query response:', { appointments, queryError }); // Debug log
-
         if (queryError) throw queryError;
-        
+
         // Check if we got any results
         if (!appointments || appointments.length === 0) {
-          console.log('No appointments found for ID:', appointmentId); // Debug log
           throw new Error('Appointment not found');
         }
 
@@ -66,25 +69,38 @@ export function ClientDyteMeetingContainer({ appointmentId }: DyteMeetingProps) 
           throw new Error('Video meeting details not found');
         }
 
+        if (cancelled) return;
+
         // Initialize RealtimeKit client with the stored client token.
         // We do NOT join here — the RtkMeeting setup screen shows a preview
         // and joins on user action.
-        await initMeeting({
+        client = await initMeeting({
           authToken: appointment.video_client_token,
           defaults: {
             audio: true,
             video: true,
           },
         });
+
+        // Unmounted while init() was in flight — don't leak the connection.
+        if (cancelled) {
+          await client?.leave();
+          client = undefined;
+        }
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
-        setError(error.message || 'An unexpected error occurred');
+        if (!cancelled) setError(error.message || 'An unexpected error occurred');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     setupMeeting();
+
+    return () => {
+      cancelled = true;
+      client?.leave();
+    };
   }, [appointmentId]);
 
   if (loading) {

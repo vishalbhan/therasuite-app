@@ -101,6 +101,12 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
   };
 
   useEffect(() => {
+    // See ClientDyteMeeting: RTKClient.init() opens a live connection tied to
+    // this participant id, and a second init evicts the first. Guard the effect
+    // and release the connection on teardown.
+    let cancelled = false;
+    let client: Awaited<ReturnType<typeof initMeeting>>;
+
     const setupMeeting = async () => {
       try {
         setLoading(true);
@@ -127,11 +133,13 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
         // Decrypt the client name
         if (appointmentData.client_name) {
           const decrypted = await decryptSingleValue(appointmentData.client_name);
-          setDecryptedClientName(decrypted);
+          if (!cancelled) setDecryptedClientName(decrypted);
         }
 
+        if (cancelled) return;
+
         // Initialize RealtimeKit client with the stored therapist token
-        const rtkClient = await initMeeting({
+        client = await initMeeting({
           authToken: appointmentData.video_therapist_token,
           defaults: {
             audio: true,
@@ -139,35 +147,46 @@ export function DyteMeetingContainer({ appointmentId }: DyteMeetingProps) {
           },
         });
 
+        // Unmounted while init() was in flight — don't leak the connection.
+        if (cancelled) {
+          await client?.leave();
+          client = undefined;
+          return;
+        }
+
         // Set call start time when joining
-        rtkClient?.self.on('roomJoined', () => {
+        client?.self.on('roomJoined', () => {
           setCallStartTime(new Date());
         });
 
-        rtkClient?.self.on('roomLeft', () => {
+        client?.self.on('roomLeft', () => {
           setCallEndTime(new Date());
           setShowNotesModal(true);
           setHasCallEnded(true);
           setShowNotesSidebar(false);
         });
 
-        // Note: we intentionally do NOT call rtkClient.join() here. The
+        // Note: we intentionally do NOT call client.join() here. The
         // RtkMeeting setup screen shows a preview and joins on user action.
       } catch (error: any) {
         console.error('Error setting up meeting:', error);
-        setError(error.message);
+        if (!cancelled) setError(error.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     setupMeeting();
 
-    // Cleanup function
+    // Cleanup: tear down the client we actually created in this effect run.
+    // (The previous version closed over a stale `meeting` from the first
+    // render, which was always undefined, and never released the connection.)
     return () => {
-      if (meeting) {
-        meeting.self.removeAllListeners('roomLeft');
-        meeting.self.removeAllListeners('roomJoined');
+      cancelled = true;
+      if (client) {
+        client.self.removeAllListeners('roomLeft');
+        client.self.removeAllListeners('roomJoined');
+        client.leave();
       }
     };
   }, [appointmentId]);
