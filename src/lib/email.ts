@@ -13,6 +13,7 @@ export const emailService = {
     session_date: string;
     session_type: string;
     session_length: number;
+    price?: number;
     client_timezone?: string;
     formatted_session_date?: string;
   }) {

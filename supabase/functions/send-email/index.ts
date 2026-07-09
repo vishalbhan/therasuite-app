@@ -174,6 +174,7 @@ serve(async (req) => {
           to: data.client_email,
           subject: `${data.therapist_name} has booked an appointment for you`,
           html: emailTemplate(`
+            <div style="font-size: 18px;">
             <h1>Appointment Confirmation</h1>
             <p>Dear ${data.client_name},</p>
 
@@ -194,22 +195,33 @@ serve(async (req) => {
                 <li>📅 <strong>Date & Time:</strong> ${data.formatted_session_date || `${formatDateIST(data.session_date)} at ${formatTimeIST(data.session_date)}`}</li>
                 <li>⌛ <strong>Duration:</strong> ${data.session_length} minutes</li>
                 <li>💻 <strong>Type:</strong> ${data.session_type === 'video' ? 'Video Call' : 'In-Person'}</li>
-                ${data.session_type === 'in_person' && data.location ? 
-                  `<li>📍 <strong>Location:</strong> ${data.location}</li>` 
+                ${data.price != null ?
+                  `<li>💰 <strong>Price:</strong> ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(data.price)}</li>`
+                  : ''
+                }
+                ${data.session_type === 'in_person' && data.location ?
+                  `<li>📍 <strong>Location:</strong> ${data.location}</li>`
                   : ''
                 }
               </ul>
-              ${data.session_type === 'video' ? 
+              ${data.session_type === 'video' ?
                 `<p><em>
                   'You will receive a video call link at the time of the appointment.'
-                  </em></p>` 
+                  </em></p>`
                 : `<p style="text-align: center;">
                     <a href="${googleCalendarUrl}" target="_blank" class="button">Add to Google Calendar</a>
                    </p>`
               }
+              <div style="margin-top: 20px; padding: 16px 18px; background-color: #FFF4E5; border: 1px solid #F0A500; border-left: 4px solid #F0A500; border-radius: 6px;">
+                <p style="margin: 0; color: #8A5A00; font-weight: bold;">⚠️ Cancellation Policy</p>
+                <p style="margin: 8px 0 0; color: #8A5A00;">
+                  Appointments cancelled less than 24 hours before the time of the call will be charged 50% of the price of the session${data.price != null ? ` (${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(data.price * 0.5)})` : ''}.
+                </p>
+              </div>
             </div>
 
             <p>Thank you for booking with us!</p>
+            </div>
           `)
         });
         break;

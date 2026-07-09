@@ -307,7 +307,7 @@ function CreateAppointmentForm({
   return (
     <div className={cn("relative", className)}>
       {isCreatingMultiple && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-50">
           <Loader2 className="h-8 w-8 animate-spin" />
           <p className="mt-2 text-sm text-muted-foreground">
             Creating appointments... ({createdCount} of {form.getValues('number_of_sessions')})
@@ -318,7 +318,7 @@ function CreateAppointmentForm({
         </div>
       )}
       {((isSubmitting && !isCreatingMultiple) || showSuccessOverlay) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-50">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-50">
           {!showSuccessOverlay ? (
             <>
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -1297,9 +1297,10 @@ export function CreateAppointmentModal({
                 session_date: currentSessionDate.toISOString(),
                 session_type: values.session_type,
                 session_length: parseInt(values.session_length),
+                price: values.price,
                 therapist_name: therapist?.full_name || 'Your Therapist',
                 therapist_photo_url: therapist?.photo_url || '',
-                location: values.session_type === 'in_person' ? 
+                location: values.session_type === 'in_person' ?
                   `${values.location.address}, ${values.location.city}, ${values.location.state} - ${values.location.postal_code}, ${values.location.country}` 
                   : undefined,
                 video_link: videoLink,
@@ -1419,23 +1420,25 @@ export function CreateAppointmentModal({
             <DialogTitle className="mb-4">Create New Appointment</DialogTitle>
           </DialogHeader>
           <CreateAppointmentForm {...formProps} />
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              onClick={form.handleSubmit(onSubmit)}
-            >
-              Create Appointment
-            </Button>
-          </div>
+          {!showSuccessOverlay && (
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                onClick={form.handleSubmit(onSubmit)}
+              >
+                Create Appointment
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -1450,20 +1453,22 @@ export function CreateAppointmentModal({
         <div className="px-4 overflow-y-auto flex-1">
           <CreateAppointmentForm {...formProps} className="pb-4" />
         </div>
-        <DrawerFooter className="pt-2">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            onClick={form.handleSubmit(onSubmit)}
-          >
-            Create Appointment
-          </Button>
-          <DrawerClose asChild>
-            <Button variant="outline" disabled={isSubmitting}>
-              Cancel
+        {!showSuccessOverlay && (
+          <DrawerFooter className="pt-2">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              onClick={form.handleSubmit(onSubmit)}
+            >
+              Create Appointment
             </Button>
-          </DrawerClose>
-        </DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        )}
       </DrawerContent>
     </Drawer>
   );
